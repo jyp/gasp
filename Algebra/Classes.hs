@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, ConstraintKinds, FlexibleContexts, FlexibleInstances #-}
-module MyPrelude where
+module Algebra.Classes where
 
 import Prelude (Int,Integer, Double, Foldable (..), (==), Monoid(..), Ord(..), Real(..), Enum(..), Rational(..), fst, snd, Functor(..))
 import qualified Prelude
@@ -153,7 +153,7 @@ class Multiplicative a => Division a where
 
 instance Division Double where
   (/) = (Prelude./)
-  
+
 class (Ring a, Division a) => Field a where
   fromRational :: Rational -> a
   fromRational x  =  fromInteger (Data.Ratio.numerator x) /
