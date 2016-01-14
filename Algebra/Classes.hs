@@ -1,11 +1,19 @@
 {-# LANGUAGE MultiParamTypeClasses, ConstraintKinds, FlexibleContexts, FlexibleInstances #-}
 module Algebra.Classes where
 
-import Prelude (Int,Integer, Double, Foldable (..), (==), Monoid(..), Ord(..), Real(..), Enum(..), Rational(..), fst, snd, Functor(..))
+import Prelude as Algebra.Classes (Int,Integer, Double, Foldable (..), (==), Monoid(..), Ord(..), Real(..), Enum(..), Rational, snd, Functor(..))
 import qualified Prelude
 import qualified Data.Ratio
 import qualified Data.Map as M
 import Data.Map (Map)
+
+infixl 6 -
+infixl 6 +
+
+infixl 7 *
+infixl 7 /
+infixl 7 `mod`
+infixl 7 `div`
 
 type Natural = Integer
 
@@ -69,7 +77,6 @@ instance AbelianAdditive Integer
 instance AbelianAdditive Int
 instance AbelianAdditive Double
 instance (Ord k,AbelianAdditive v) => AbelianAdditive (Map k v)
-
 
 class Additive a => Group a where
   (-) :: a -> a -> a
