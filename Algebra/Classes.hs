@@ -6,6 +6,7 @@ import qualified Prelude
 import qualified Data.Ratio
 import qualified Data.Map as M
 import Data.Map (Map)
+import Foreign.C
 
 infixl 6 -
 infixl 6 +
@@ -57,6 +58,10 @@ instance Additive Integer where
   (+) = (Prelude.+)
   zero = 0
 
+instance Additive CInt where
+  (+) = (Prelude.+)
+  zero = 0
+
 instance Additive Int where
   (+) = (Prelude.+)
   zero = 0
@@ -74,6 +79,7 @@ class Additive a => AbelianAdditive a
 
 
 instance AbelianAdditive Integer
+instance AbelianAdditive CInt
 instance AbelianAdditive Int
 instance AbelianAdditive Double
 instance (Ord k,AbelianAdditive v) => AbelianAdditive (Map k v)
@@ -92,6 +98,10 @@ instance Group Int where
   (-) = (Prelude.-)
   negate = Prelude.negate
 
+instance Group CInt where
+  (-) = (Prelude.-)
+  negate = Prelude.negate
+
 instance Group Double where
   (-) = (Prelude.-)
   negate = Prelude.negate
@@ -103,6 +113,9 @@ instance (Ord k,Group v) => Group (Map k v) where
 -- | Module
 class (AbelianAdditive a, Ring scalar) => Module scalar a where
   (*^) :: scalar -> a -> a
+
+instance Module Double Double where
+  (*^) = (*)
 
 instance (Ord k,Ring v) => Module v (Map k v) where
   s *^ m = fmap (s *) m
@@ -126,6 +139,11 @@ instance Multiplicative Integer where
   one = 1
   (^) = (Prelude.^)
 
+instance Multiplicative CInt where
+  (*) = (Prelude.*)
+  one = 1
+  (^) = (Prelude.^)
+
 instance Multiplicative Int where
   (*) = (Prelude.*)
   one = 1
@@ -143,6 +161,9 @@ class (SemiRing a, Group a) => Ring a where
   fromInteger n = mult n one
 
 instance Ring Integer where
+  fromInteger = Prelude.fromInteger
+
+instance Ring CInt where
   fromInteger = Prelude.fromInteger
 
 instance Ring Int where
@@ -196,13 +217,17 @@ instance  EuclideanDomain Integer  where
     stdAssociate x  =  Prelude.abs x
     stdUnit x       =  if x < 0 then -1 else 1
 
-instance  EuclideanDomain Int  where
+instance  EuclideanDomain CInt  where
     div             =  Prelude.div
     mod             =  Prelude.mod
     stdAssociate x  =  Prelude.abs x
     stdUnit x       =  if x < 0 then -1 else 1
 
-
+instance  EuclideanDomain Int  where
+    div             =  Prelude.div
+    mod             =  Prelude.mod
+    stdAssociate x  =  Prelude.abs x
+    stdUnit x       =  if x < 0 then -1 else 1
 
 class (Real a, Enum a, EuclideanDomain a) => Integral a  where
     quot, rem       :: a -> a -> a
