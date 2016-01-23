@@ -57,22 +57,27 @@ add xs = fromSum (foldMap Sum xs)
 instance Additive Integer where
   (+) = (Prelude.+)
   zero = 0
+  times n x = n * x
 
 instance Additive CInt where
   (+) = (Prelude.+)
   zero = 0
+  times n x = Prelude.fromIntegral n * x
 
 instance Additive Int where
   (+) = (Prelude.+)
   zero = 0
+  times n x = Prelude.fromIntegral n * x
 
 instance Additive Double where
   (+) = (Prelude.+)
   zero = 0
+  times n x = Prelude.fromIntegral n * x
 
 instance (Ord k,Additive v) => Additive (Map k v) where
   (+) = M.unionWith (+)
   zero = M.empty
+  times n = fmap (times n)
 
 class Additive a => AbelianAdditive a
   -- just a law.
@@ -113,6 +118,15 @@ instance (Ord k,Group v) => Group (Map k v) where
 -- | Module
 class (AbelianAdditive a, Ring scalar) => Module scalar a where
   (*^) :: scalar -> a -> a
+
+instance Module Integer Integer where
+  (*^) = (*)
+
+instance Module Int Int where
+  (*^) = (*)
+
+instance Module CInt CInt where
+  (*^) = (*)
 
 instance Module Double Double where
   (*^) = (*)
