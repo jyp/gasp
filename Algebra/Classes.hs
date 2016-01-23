@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, ConstraintKinds, FlexibleContexts, FlexibleInstances #-}
 module Algebra.Classes where
 
-import Prelude as Algebra.Classes (Int,Integer, Double, Foldable (..), (==), Monoid(..), Ord(..), Real(..), Enum(..), Rational, snd, Functor(..))
+import Prelude as Algebra.Classes (Int,Integer,Float,Double, Foldable (..), (==), Monoid(..), Ord(..), Real(..), Enum(..), Rational, snd, Functor(..))
 import qualified Prelude
 import qualified Data.Ratio
 import qualified Data.Map as M
@@ -74,6 +74,11 @@ instance Additive Double where
   zero = 0
   times n x = Prelude.fromIntegral n * x
 
+instance Additive Float where
+  (+) = (Prelude.+)
+  zero = 0
+  times n x = Prelude.fromIntegral n * x
+
 instance (Ord k,Additive v) => Additive (Map k v) where
   (+) = M.unionWith (+)
   zero = M.empty
@@ -87,6 +92,7 @@ instance AbelianAdditive Integer
 instance AbelianAdditive CInt
 instance AbelianAdditive Int
 instance AbelianAdditive Double
+instance AbelianAdditive Float
 instance (Ord k,AbelianAdditive v) => AbelianAdditive (Map k v)
 
 class Additive a => Group a where
@@ -111,6 +117,10 @@ instance Group Double where
   (-) = (Prelude.-)
   negate = Prelude.negate
 
+instance Group Float where
+  (-) = (Prelude.-)
+  negate = Prelude.negate
+
 instance (Ord k,Group v) => Group (Map k v) where
   (-) = M.unionWith (-)
   negate = fmap negate
@@ -129,6 +139,9 @@ instance Module CInt CInt where
   (*^) = (*)
 
 instance Module Double Double where
+  (*^) = (*)
+
+instance Module Float Float where
   (*^) = (*)
 
 instance (Ord k,Ring v) => Module v (Map k v) where
@@ -168,6 +181,11 @@ instance Multiplicative Double where
   one = 1
   (^) = (Prelude.^)
 
+instance Multiplicative Float where
+  (*) = (Prelude.*)
+  one = 1
+  (^) = (Prelude.^)
+
 type SemiRing a = (Multiplicative a, AbelianAdditive a)
 
 class (SemiRing a, Group a) => Ring a where
@@ -186,6 +204,9 @@ instance Ring Int where
 instance Ring Double where
   fromInteger = Prelude.fromInteger
 
+instance Ring Float where
+  fromInteger = Prelude.fromInteger
+
 class Multiplicative a => Division a where
   recip :: a -> a
   (/) :: a -> a -> a
@@ -196,12 +217,18 @@ class Multiplicative a => Division a where
 instance Division Double where
   (/) = (Prelude./)
 
+instance Division Float where
+  (/) = (Prelude./)
+
 class (Ring a, Division a) => Field a where
   fromRational :: Rational -> a
   fromRational x  =  fromInteger (Data.Ratio.numerator x) /
                      fromInteger (Data.Ratio.denominator x)
 
 instance Field Double where
+  fromRational = Prelude.fromRational
+
+instance Field Float where
   fromRational = Prelude.fromRational
 
 type VectorSpace scalar a = (Field scalar, Module scalar a)
