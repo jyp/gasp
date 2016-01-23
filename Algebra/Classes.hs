@@ -12,6 +12,7 @@ infixl 6 -
 infixl 6 +
 
 infixl 7 *
+infixl 7 *^
 infixl 7 /
 infixl 7 `mod`
 infixl 7 `div`
@@ -96,8 +97,11 @@ instance AbelianAdditive Float
 instance (Ord k,AbelianAdditive v) => AbelianAdditive (Map k v)
 
 class Additive a => Group a where
+  {-# MINIMAL (negate | (-)) #-}
   (-) :: a -> a -> a
+  a - b = a + negate b
   negate :: a -> a
+  negate b = zero - b
   mult :: Integer -> a -> a
   mult n x = if n < 0 then negate (times n (negate x)) else times n x
 
@@ -122,7 +126,9 @@ instance Group Float where
   negate = Prelude.negate
 
 instance (Ord k,Group v) => Group (Map k v) where
-  (-) = M.unionWith (-)
+  -- This definition does not work:
+  -- (-) = M.unionWith (-)
+  -- because if a key is not present on the lhs. then the rhs won't be negated.
   negate = fmap negate
 
 -- | Module
@@ -284,3 +290,13 @@ instance  Integral Integer  where
     quot      =  Prelude.quot
     rem       =  Prelude.rem
     toInteger = Prelude.toInteger
+
+{-
+Note: the following is not quite what we intuitively want, because
+
+class Field a => AlgebraicallyClosed  a where
+  sqrt :: a -> (a,a)
+
+AlgebraicallyClosed numbers have two square roots.
+
+-}
