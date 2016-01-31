@@ -4,7 +4,7 @@ module Algebra.Classes where
 import Prelude as Algebra.Classes (Int,Integer,Float,Double, Foldable (..), (==), Monoid(..), Ord(..), Real(..), Enum(..), Rational, snd, Functor(..))
 import qualified Prelude
 import qualified Data.Ratio
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import Data.Map (Map)
 import Foreign.C
 
@@ -12,7 +12,7 @@ infixl 6 -
 infixl 6 +
 
 infixl 7 *
-infixl 7 *^
+infixr 7 *^
 infixl 7 /
 infixl 7 `mod`
 infixl 7 `div`
@@ -214,10 +214,11 @@ instance Ring Float where
   fromInteger = Prelude.fromInteger
 
 class Multiplicative a => Division a where
+  {-# MINIMAL (recip | (/)) #-}
   recip :: a -> a
-  (/) :: a -> a -> a
   recip x         =  one / x
 
+  (/) :: a -> a -> a
   x / y           =  x * recip y
 
 instance Division Double where
