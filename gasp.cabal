@@ -4,7 +4,7 @@ category:       Algebra
 synopsis:       A framework of algebraic classes
 description:
   Soon to appear.
-license:        GPL
+license:        BSD
 license-file:   LICENSE
 author:         Jean-Philippe Bernardy
 maintainer:     jeanphilippe.bernardy@gmail.com
