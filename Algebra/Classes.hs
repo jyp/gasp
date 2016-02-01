@@ -1,7 +1,8 @@
 {-# LANGUAGE MultiParamTypeClasses, ConstraintKinds, FlexibleContexts, FlexibleInstances #-}
 module Algebra.Classes where
 
-import Prelude as Algebra.Classes (Int,Integer,Float,Double, Foldable (..), (==), Monoid(..), Ord(..), Real(..), Enum(..), Rational, snd, Functor(..))
+import Prelude as Algebra.Classes (Int,Integer,Float,Double, Foldable (..), (==), Monoid(..), Ord(..)
+                                  ,Real(..), Enum(..), snd, Rational, Functor(..), error, Eq(..), Bool(..))
 import qualified Prelude
 import qualified Data.Ratio
 import qualified Data.Map.Strict as M
@@ -85,10 +86,24 @@ instance (Ord k,Additive v) => Additive (Map k v) where
   zero = M.empty
   times n = fmap (times n)
 
+class Additive r => DecidableZero r where
+  isZero :: r -> Bool
+
+instance DecidableZero Integer where
+  isZero = (== 0)
+instance DecidableZero CInt where
+  isZero = (== 0)
+instance DecidableZero Int where
+  isZero = (== 0)
+instance DecidableZero Double where
+  isZero = (== 0)
+instance DecidableZero Float where
+  isZero = (== 0)
+instance (Ord k,DecidableZero v) => DecidableZero (Map k v) where
+  isZero = Prelude.all isZero
+
 class Additive a => AbelianAdditive a
   -- just a law.
-
-
 instance AbelianAdditive Integer
 instance AbelianAdditive CInt
 instance AbelianAdditive Int
