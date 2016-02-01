@@ -50,7 +50,7 @@ class Additive a where
   times 0 _ = zero
   times n x = if r == 0 then y + y else x + y + y
     where (m,r) = n `Prelude.divMod` 2
-          y = times m y
+          y = times m x
 
 add :: (Foldable t, Additive a) => t a -> a
 add xs = fromSum (foldMap Sum xs)
