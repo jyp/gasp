@@ -256,6 +256,7 @@ instance Field Float where
 type VectorSpace scalar a = (Field scalar, Module scalar a)
 
 class Ring a => EuclideanDomain a where
+    {-# MINIMAL (stdUnit | normalize) , (divMod | (div , mod)) #-}
     stdAssociate    :: a -> a
     stdUnit         :: a -> a
     normalize       :: a -> (a, a)
@@ -263,8 +264,6 @@ class Ring a => EuclideanDomain a where
     div, mod        :: a -> a -> a
     divMod          :: a -> a -> (a,a)
 
-    -- Minimal complete definition:
-    --      (stdUnit or normalize) and (divMod or (div and mod))
     stdAssociate x  =  x `div` stdUnit x
     stdUnit x       =  snd (normalize x)
     normalize x     =  (stdAssociate x, stdUnit x)
