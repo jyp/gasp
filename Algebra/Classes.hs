@@ -118,7 +118,7 @@ class Additive a => Group a where
   negate :: a -> a
   negate b = zero - b
   mult :: Integer -> a -> a
-  mult n x = if n < 0 then negate (times n (negate x)) else times n x
+  mult n x = if n < 0 then negate (times (negate n) x) else times n x
 
 instance Group Integer where
   (-) = (Prelude.-)
