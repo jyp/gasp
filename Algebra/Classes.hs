@@ -315,3 +315,93 @@ class Field a => AlgebraicallyClosed  a where
 AlgebraicallyClosed numbers have two square roots.
 
 -}
+
+data Ratio a = !a :% !a  deriving (Eq)
+type MyRational = Ratio Integer
+
+gcd             :: (Integral a) => a -> a -> a
+{-# NOINLINE [1] gcd #-}
+gcd x y         =  gcd' (stdAssociate x) (stdAssociate y)
+ where
+   gcd'             :: (Eq a, Integral a) => a -> a -> a
+   gcd' a 0  =  a
+   gcd' a b  =  gcd' b (a `rem` b)
+
+{-
+-- | 'reduce' is a subsidiary function used only in this module.
+-- It normalises a ratio by dividing both numerator and denominator by
+-- their greatest common divisor.
+reduce :: (Eq a, Integral a) => a -> a -> Ratio a
+{-# SPECIALISE reduce :: Integer -> Integer -> MyRational #-}
+reduce _ 0              =  error "reduce: division by zero"
+reduce x y              =  (x `quot` d) :% (y `quot` d)
+                           where d = gcd x y
+
+(%) :: Integral a => a -> a -> Ratio a
+x % y                   =  reduce (x * stdUnit y) (stdAssociate y)
+
+
+instance Integral a => AbelianAdditive (Ratio a) where
+
+instance Integral a => Additive (Ratio a) where
+    (x:%y) + (x':%y')   =  reduce (x*y' + x'*y) (y*y')
+    zero = 0
+    times n (x :% y) = reduce (times n x) y
+
+instance Integral a => Multiplicative (Ratio a) where
+    (x:%y) * (x':%y')   =  reduce (x * x') (y * y')
+    one = 1 :% 1
+
+instance Integral a => Group (Ratio a) where
+    (x:%y) - (x':%y')   =  reduce (x*y' - x'*y) (y*y')
+    negate (x:%y)       =  (-x) :% y
+
+instance Integral a => EuclideanDomain (Ratio a) where
+    stdAssociate (x:%y)          =  stdAssociate x :% y
+    stdUnit (x:%_)       =  stdUnit x :% 1
+
+instance Integral a => Ring (Ratio a) where
+    fromInteger x       =  fromInteger x :% 1
+
+instance Integral a => Division (Ratio a) where
+  recip (x:%y) = y:%x
+
+instance Integral a => Field (Ratio a) where
+
+
+-}
+
+instance Prelude.Integral a => Additive (Data.Ratio.Ratio a) where
+  zero = Prelude.fromInteger 0
+  (+) = (Prelude.+)
+
+instance Prelude.Integral a => AbelianAdditive (Data.Ratio.Ratio a) where
+
+instance Prelude.Integral a => Group (Data.Ratio.Ratio a) where
+  negate = Prelude.negate
+  (-) = (Prelude.-)
+
+instance Prelude.Integral a => Multiplicative (Data.Ratio.Ratio a) where
+  one = Prelude.fromInteger 1
+  (*) = (Prelude.*)
+
+instance Prelude.Integral a => Division (Data.Ratio.Ratio a) where
+  recip = Prelude.recip
+  (/) = (Prelude./)
+
+instance Prelude.Integral a => Ring (Data.Ratio.Ratio a) where
+  fromInteger = Prelude.fromInteger
+
+instance Prelude.Integral a => Field (Data.Ratio.Ratio a) where
+  fromRational = Prelude.fromRational
+
+ifThenElse True a _ = a
+ifThenElse False _ a = a
+
+
+data InitialAdditive = InitialAdditive :+ InitialAdditive | Zero
+  deriving (Prelude.Show)
+
+instance Additive InitialAdditive where
+  zero = Zero
+  (+) = (:+)
