@@ -2,12 +2,13 @@
 module Algebra.Classes where
 
 import Prelude as Algebra.Classes (Int,Integer,Float,Double, Foldable (..), (==), Monoid(..), Ord(..)
-                                  ,Real(..), Enum(..), snd, Rational, Functor(..), error, Eq(..), Bool(..))
+                                  ,Real(..), Enum(..), snd, Rational, Functor(..), Eq(..), Bool(..))
 import qualified Prelude
 import qualified Data.Ratio
 import qualified Data.Map.Strict as M
 import Data.Map (Map)
 import Foreign.C
+import Data.Word
 
 infixl 6 -
 infixl 6 +
@@ -61,6 +62,21 @@ instance Additive Integer where
   zero = 0
   times n x = n * x
 
+instance Additive Word32 where
+  (+) = (Prelude.+)
+  zero = 0
+  times n x = Prelude.fromIntegral n * x
+
+instance Additive Word16 where
+  (+) = (Prelude.+)
+  zero = 0
+  times n x = Prelude.fromIntegral n * x
+
+instance Additive Word8 where
+  (+) = (Prelude.+)
+  zero = 0
+  times n x = Prelude.fromIntegral n * x
+
 instance Additive CInt where
   (+) = (Prelude.+)
   zero = 0
@@ -92,6 +108,12 @@ class Additive r => DecidableZero r where
 instance DecidableZero Integer where
   isZero = (== 0)
 instance DecidableZero CInt where
+  isZero = (== 0)
+instance DecidableZero Word32 where
+  isZero = (== 0)
+instance DecidableZero Word16 where
+  isZero = (== 0)
+instance DecidableZero Word8 where
   isZero = (== 0)
 instance DecidableZero Int where
   isZero = (== 0)
@@ -129,6 +151,18 @@ instance Group Int where
   negate = Prelude.negate
 
 instance Group CInt where
+  (-) = (Prelude.-)
+  negate = Prelude.negate
+
+instance Group Word32 where
+  (-) = (Prelude.-)
+  negate = Prelude.negate
+
+instance Group Word16 where
+  (-) = (Prelude.-)
+  negate = Prelude.negate
+
+instance Group Word8 where
   (-) = (Prelude.-)
   negate = Prelude.negate
 
@@ -188,6 +222,21 @@ instance Multiplicative Integer where
   (^) = (Prelude.^)
 
 instance Multiplicative CInt where
+  (*) = (Prelude.*)
+  one = 1
+  (^) = (Prelude.^)
+
+instance Multiplicative Word32 where
+  (*) = (Prelude.*)
+  one = 1
+  (^) = (Prelude.^)
+
+instance Multiplicative Word16 where
+  (*) = (Prelude.*)
+  one = 1
+  (^) = (Prelude.^)
+
+instance Multiplicative Word8 where
   (*) = (Prelude.*)
   one = 1
   (^) = (Prelude.^)
@@ -395,6 +444,7 @@ instance Prelude.Integral a => Ring (Data.Ratio.Ratio a) where
 instance Prelude.Integral a => Field (Data.Ratio.Ratio a) where
   fromRational = Prelude.fromRational
 
+ifThenElse :: Bool -> t -> t -> t
 ifThenElse True a _ = a
 ifThenElse False _ a = a
 
@@ -405,3 +455,6 @@ data InitialAdditive = InitialAdditive :+ InitialAdditive | Zero
 instance Additive InitialAdditive where
   zero = Zero
   (+) = (:+)
+
+instance Module Rational Double where
+  r *^ d = fromRational r * d
