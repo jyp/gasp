@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, ConstraintKinds, FlexibleContexts, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, ConstraintKinds, FlexibleContexts, FlexibleInstances, DeriveGeneric #-}
 module Algebra.Classes where
 
 import Prelude as Algebra.Classes (Int,Integer,Float,Double, Foldable (..), (==), Monoid(..), Ord(..)
@@ -9,6 +9,8 @@ import qualified Data.Map.Strict as M
 import Data.Map (Map)
 import Foreign.C
 import Data.Word
+import Data.Binary
+import GHC.Generics
 
 infixl 6 -
 infixl 6 +
@@ -21,7 +23,9 @@ infixl 7 `div`
 
 type Natural = Integer
 
-newtype Sum a = Sum {fromSum :: a}
+newtype Sum a = Sum {fromSum :: a} deriving Generic
+
+instance Binary a => Binary (Sum a)
 
 instance Additive a => Monoid (Sum a) where
   mempty = Sum zero
