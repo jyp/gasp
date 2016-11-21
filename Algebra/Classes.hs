@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiParamTypeClasses, ConstraintKinds, FlexibleContexts, FlexibleInstances, DeriveGeneric #-}
 module Algebra.Classes where
 
@@ -184,27 +185,35 @@ instance (Ord k,Group v) => Group (Map k v) where
   -- because if a key is not present on the lhs. then the rhs won't be negated.
   negate = fmap negate
 
+type family Scalar m
+type instance Scalar Integer = Integer
+type instance Scalar Int = Int
+type instance Scalar CInt = CInt
+type instance Scalar Double = Double
+type instance Scalar Float = Float
+
 -- | Module
-class (AbelianAdditive a, Ring scalar) => Module scalar a where
-  (*^) :: scalar -> a -> a
+class (AbelianAdditive a, Ring (Scalar a)) => Module a where
+  (*^) :: Scalar a -> a -> a
 
-instance Module Integer Integer where
+instance Module Integer where
   (*^) = (*)
 
-instance Module Int Int where
+instance Module Int where
   (*^) = (*)
 
-instance Module CInt CInt where
+instance Module CInt where
   (*^) = (*)
 
-instance Module Double Double where
+instance Module Double where
   (*^) = (*)
 
-instance Module Float Float where
+instance Module Float where
   (*^) = (*)
 
-instance (Ord k,Ring v) => Module v (Map k v) where
-  s *^ m = fmap (s *) m
+type instance Scalar (Map k v) = Scalar v
+instance (Ord k,Module v) => Module (Map k v) where
+  s *^ m = fmap (s *^) m
 
 -- | Multiplicative monoid
 class Multiplicative a where
@@ -306,7 +315,7 @@ instance Field Double where
 instance Field Float where
   fromRational = Prelude.fromRational
 
-type VectorSpace scalar a = (Field scalar, Module scalar a)
+type VectorSpace a = (Field (Scalar a), Module a)
 
 class Ring a => EuclideanDomain a where
     {-# MINIMAL (stdUnit | normalize) , (divMod | (div , mod)) #-}
@@ -460,5 +469,6 @@ instance Additive InitialAdditive where
   zero = Zero
   (+) = (:+)
 
-instance Module Rational Double where
-  r *^ d = fromRational r * d
+type instance Scalar Rational = Rational
+instance Module Rational where
+  r *^ d = r * d
