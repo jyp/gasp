@@ -2,7 +2,7 @@
 module Algebra.Classes where
 
 import Prelude as Algebra.Classes (Int,Integer,Float,Double, Foldable (..), (==), Monoid(..), Ord(..)
-                                  ,Real(..), Enum(..), snd, Rational, Functor(..), Eq(..), Bool(..))
+                                  ,Real(..), Enum(..), snd, Rational, Functor(..), Eq(..), Bool(..), Semigroup(..))
 import qualified Prelude
 import qualified Data.Ratio
 import qualified Data.Map.Strict as M
@@ -29,13 +29,19 @@ instance Binary a => Binary (Sum a)
 
 instance Additive a => Monoid (Sum a) where
   mempty = Sum zero
-  mappend (Sum x) (Sum y) = Sum (x + y)
+  mappend = (<>)
+
+instance Additive a => Semigroup (Sum a) where
+  (<>) (Sum x) (Sum y) = Sum (x + y)
 
 newtype Product a = Product {fromProduct :: a}
 
+instance Multiplicative a => Semigroup (Product a) where
+  (<>) (Product x) (Product y) = Product (x * y)
+
 instance Multiplicative a => Monoid (Product a) where
   mempty = Product one
-  mappend (Product x) (Product y) = Product (x * y)
+  mappend = (<>)
 
 newtype Exponential a = Exponential {fromExponential :: a}
 
