@@ -1,5 +1,5 @@
 name:           gasp
-version:        1.0.1.0
+version:        1.1.0.0
 category:       Algebra
 synopsis:       A framework of algebraic classes
 description:
@@ -9,7 +9,7 @@ license-file:   LICENSE
 author:         Jean-Philippe Bernardy
 maintainer:     jeanphilippe.bernardy@gmail.com
 Cabal-Version:  >= 1.12
-tested-with:    GHC==7.10.3
+tested-with:    GHC==8.4.1
 build-type:     Simple
 
 library
