@@ -31,8 +31,26 @@ import Data.Traversable
 import Control.Monad.State
 import Control.Category
 
-data V2' a = V2' a a deriving (Functor,Foldable,Traversable,Show,Eq)
-data V3' a = V3' a a a deriving (Functor,Foldable,Traversable,Show,Eq)
+data VZero a = VZero deriving (Functor,Foldable,Traversable,Show,Eq)
+instance Applicative VZero where
+  pure _ = VZero
+  VZero <*> VZero = VZero
+
+data VNext v a = VNext !(v a) !a deriving (Functor,Foldable,Traversable,Show,Eq)
+instance Applicative v => Applicative (VNext v) where
+  pure x = VNext (pure x) x
+  VNext fs f <*> VNext xs x = VNext (fs <*> xs) (f x)
+
+type V1' = VNext VZero
+type V2' = VNext V1'
+type V3' = VNext V2'
+
+pattern V1' :: a -> V1' a
+pattern V1' x = VNext VZero x
+pattern V2' :: forall a. a -> a -> V2' a
+pattern V2' x y = VNext (V1' x) y
+pattern V3' :: forall a. a -> a -> a -> V3' a
+pattern V3' x y z = VNext (V2' x y) z
 
 -- | Make a Euclidean vector out of a traversable functor
 newtype Euclid f a = Euclid (f a) deriving (Functor,Foldable,Traversable,Show,Eq,Applicative)
@@ -41,18 +59,11 @@ type Ring' a = Module a a
 
 type V3 = Euclid V3'
 type V2 = Euclid V2'
+
 pattern V2 :: forall a. a -> a -> Euclid V2' a
 pattern V2 x y = Euclid (V2' x y)
 pattern V3 :: forall a. a -> a -> a -> Euclid V3' a
 pattern V3 x y z = Euclid (V3' x y z)
-
-instance Applicative V3' where
-  pure x = V3' x x x
-  V3' f1 f2 f3 <*> V3' x1 x2 x3 = V3' (f1 x1) (f2 x2) (f3 x3)
-
-instance Applicative V2' where
-  pure x = V2' x x
-  V2' f1 f2 <*> V2' x1 x2 = V2' (f1 x1) (f2 x2)
 
 instance (Applicative f,Additive a) => Additive (Euclid f a) where
   zero = pure zero
