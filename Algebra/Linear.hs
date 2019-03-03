@@ -162,14 +162,17 @@ crossProductMatrix (V3 a1 a2 a3) = Mat (V3'  (V3' zero (negate a3) a2)
 -- | Tensor product
 (⊗) :: (Applicative v, Applicative w, Multiplicative s)
     => Euclid w s -> Euclid v s -> Mat s v w
-(⊗) = flip (tensorWith (*))
+Euclid v1 ⊗ Euclid v2 = flip (tensorWith (*)) v1 v2
 
 tensorWith :: (Applicative v, Applicative w)
-           => (s -> t -> u) -> Euclid w s -> Euclid v t -> Mat u w v
-tensorWith f (Euclid v1) (Euclid v2) = flip f >$< Mat (pure v2) >*< Mat (pure <$> v1)
+           => (s -> t -> u) -> w s -> v t -> Mat u w v
+tensorWith f v1 v2 = flip f >$< Mat (pure v2) >*< Mat (pure <$> v1)
 
 identity :: Traversable v => Ring s => Applicative v => SqMat v s
 identity = tensorWith (\x y -> if x == y then one else zero) index index
+
+diagonal :: Traversable v => Ring s => Applicative v => Euclid v s -> SqMat v s
+diagonal (Euclid v) = tensorWith (\x (y,a) -> if x == y then a else zero) index ((,) <$> index <*> v)
 
 -- | 3d rotation around given axis
 rotation3d :: Ring' a => Floating a => a -> V3 a -> Mat3x3 a
@@ -190,7 +193,7 @@ transpose :: Applicative g => Traversable f => Mat a f g -> Mat a g f
 transpose = Mat . sequenceA . fromMat
 
 matMul :: (Traversable u, Ring s, Applicative w, Applicative v, Applicative u) => Mat s u v -> Mat s w u -> Mat s w v
-matMul (transpose -> Mat y) (Mat x)  = tensorWith (\a b -> add (a ⊙ b)) (Euclid x) (Euclid y)
+matMul (transpose -> Mat y) (Mat x)  = tensorWith (\a b -> add (a ⊙ b)) x y
 
 -- >>> let t1 = rotation2d (1::Double) in matMul t1 (transpose t1)
 -- Mat {fromMat = V2' (V2' 1.0 0.0) (V2' 0.0 1.0)}
