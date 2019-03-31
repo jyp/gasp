@@ -1,3 +1,4 @@
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
@@ -24,13 +25,12 @@
 module Algebra.Linear where
 
 import Algebra.Classes
-import Prelude (cos,sin,Floating(..),Functor(..),Show(..),Eq(..),Int,snd,fst,flip,($),Double)
+import Prelude (cos,sin,Floating(..),Functor(..),Show(..),Eq(..),Int,fst,flip,($))
 import Control.Applicative
 import Data.Foldable
 import Data.Traversable
 import Control.Monad.State
-import Control.Category
-
+import Algebra.Category
 data VZero a = VZero deriving (Functor,Foldable,Traversable,Show,Eq)
 instance Applicative VZero where
   pure _ = VZero
@@ -53,7 +53,7 @@ pattern V3' :: forall a. a -> a -> a -> V3' a
 pattern V3' x y z = VNext (V2' x y) z
 
 -- | Make a Euclidean vector out of a traversable functor
-newtype Euclid f a = Euclid (f a) deriving (Functor,Foldable,Traversable,Show,Eq,Applicative)
+newtype Euclid f a = Euclid {fromEuclid :: f a} deriving (Functor,Foldable,Traversable,Show,Eq,Applicative)
 
 type Ring' a = Module a a
 
@@ -131,8 +131,16 @@ index = fst (runState (sequenceA (pure increment)) zero)
 
 type SqMat v s = Mat s v v
 newtype Mat s v w = Mat {fromMat :: v (w s)} deriving Show
+
+instance Ring s => Category (Mat s) where
+  type Con v = (Applicative v, Traversable v)
+  (.) = matMul
+  id = identity
+
 type Mat3x3 s = SqMat V3' s
 type Mat2x2 s = SqMat V2' s
+
+
 
 pattern Mat2x2 :: forall s. s -> s -> s -> s -> Mat s V2' V2'
 pattern Mat2x2 a b c d = Mat (V2' (V2' a b) (V2' c d))
@@ -157,7 +165,6 @@ crossProductMatrix :: Group a => V3 a -> Mat3x3 a
 crossProductMatrix (V3 a1 a2 a3) = Mat (V3'  (V3' zero (negate a3) a2)
                                              (V3' a3 zero (negate a1))
                                              (V3' (negate a2) a1 zero))
-
 
 -- | Tensor product
 (⊗) :: (Applicative v, Applicative w, Multiplicative s)
@@ -194,6 +201,7 @@ transpose = Mat . sequenceA . fromMat
 
 matMul :: (Traversable u, Ring s, Applicative w, Applicative v, Applicative u) => Mat s u v -> Mat s w u -> Mat s w v
 matMul (transpose -> Mat y) (Mat x)  = tensorWith (\a b -> add (a ⊙ b)) x y
+
 
 -- >>> let t1 = rotation2d (1::Double) in matMul t1 (transpose t1)
 -- Mat {fromMat = V2' (V2' 1.0 0.0) (V2' 0.0 1.0)}

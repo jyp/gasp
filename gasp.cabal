@@ -26,4 +26,5 @@ library
   exposed-modules:
        Algebra.Classes
        Algebra.Linear
+       Algebra.Category
 
