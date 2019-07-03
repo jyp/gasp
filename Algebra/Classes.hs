@@ -191,7 +191,7 @@ instance (Ord k,Group v) => Group (Map k v) where
   negate = fmap negate
 
 -- | Module
-class (AbelianAdditive a, Ring scalar) => Module scalar a where
+class (AbelianAdditive a, PreRing scalar) => Module scalar a where
   (*^) :: scalar -> a -> a
 
 instance Module Integer Integer where
@@ -266,11 +266,16 @@ instance Multiplicative Float where
   one = 1
   (^) = (Prelude.^)
 
-type SemiRing a = (Multiplicative a, AbelianAdditive a)
 
-class (SemiRing a, Group a) => Ring a where
+type SemiRing a = (Multiplicative a, AbelianAdditive a)
+type PreRing a = (SemiRing a, Group a)
+
+fromIntegerDefault :: PreRing a => Integer -> a
+fromIntegerDefault n = mult n one
+
+class (Module a a, PreRing a) => Ring a where
   fromInteger :: Integer -> a
-  fromInteger n = mult n one
+  fromInteger = fromIntegerDefault
 
 instance Ring Integer where
   fromInteger = Prelude.fromInteger
@@ -447,6 +452,9 @@ instance Prelude.Integral a => Multiplicative (Data.Ratio.Ratio a) where
 instance Prelude.Integral a => Division (Data.Ratio.Ratio a) where
   recip = Prelude.recip
   (/) = (Prelude./)
+
+instance Prelude.Integral a => Module (Data.Ratio.Ratio a) (Data.Ratio.Ratio a) where
+  (*^) = (*)
 
 instance Prelude.Integral a => Ring (Data.Ratio.Ratio a) where
   fromInteger = Prelude.fromInteger

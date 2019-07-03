@@ -55,8 +55,6 @@ pattern V3' x y z = VNext (V2' x y) z
 -- | Make a Euclidean vector out of a traversable functor
 newtype Euclid f a = Euclid {fromEuclid :: f a} deriving (Functor,Foldable,Traversable,Show,Eq,Applicative)
 
-type Ring' a = Module a a
-
 type V3 = Euclid V3'
 type V2 = Euclid V2'
 
@@ -105,7 +103,7 @@ class VectorSpace (Scalar v) v => InnerProdSpace v where
 (⊙) :: Applicative v => Multiplicative s => v s -> v s -> v s
 x ⊙ y = (*) <$> x <*> y
 
-instance (Ring' a, Field a, Applicative f, Foldable f) => InnerProdSpace (Euclid f a) where
+instance (Ring a, Field a, Applicative f, Foldable f) => InnerProdSpace (Euclid f a) where
   type Scalar (Euclid f a) = a
   dotProd x y = add (x ⊙ y)
 
@@ -182,7 +180,7 @@ diagonal :: Traversable v => Ring s => Applicative v => Euclid v s -> SqMat v s
 diagonal (Euclid v) = tensorWith (\x (y,a) -> if x == y then a else zero) index ((,) <$> index <*> v)
 
 -- | 3d rotation around given axis
-rotation3d :: Ring' a => Floating a => a -> V3 a -> Mat3x3 a
+rotation3d :: Ring a => Floating a => a -> V3 a -> Mat3x3 a
 rotation3d θ u = cos θ *^ identity +
                  sin θ *^ crossProductMatrix u +
                  (1 - cos θ) *^ (u ⊗ u)
