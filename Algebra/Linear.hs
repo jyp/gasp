@@ -25,21 +25,22 @@
 module Algebra.Linear where
 
 import Algebra.Classes
-import Prelude (cos,sin,Floating(..),Functor(..),Show(..),Eq(..),Int,fst,flip,($))
+import Prelude (cos,sin,Floating(..),Functor(..),Show(..),Eq(..),Int,fst,flip,($),Ord)
 import Control.Applicative
 import Data.Foldable
 import Data.Traversable
 import Control.Monad.State
 import Algebra.Category
-data VZero a = VZero deriving (Functor,Foldable,Traversable,Show,Eq)
+data VZero a = VZero deriving (Functor,Foldable,Traversable,Show,Eq,Ord)
 instance Applicative VZero where
   pure _ = VZero
   VZero <*> VZero = VZero
 
-data VNext v a = VNext !(v a) !a deriving (Functor,Foldable,Traversable,Show,Eq)
+data VNext v a = VNext !(v a) !a deriving (Functor,Foldable,Traversable,Show,Eq,Ord)
 instance Applicative v => Applicative (VNext v) where
   pure x = VNext (pure x) x
   VNext fs f <*> VNext xs x = VNext (fs <*> xs) (f x)
+
 
 type V1' = VNext VZero
 type V2' = VNext V1'
@@ -53,7 +54,7 @@ pattern V3' :: forall a. a -> a -> a -> V3' a
 pattern V3' x y z = VNext (V2' x y) z
 
 -- | Make a Euclidean vector out of a traversable functor
-newtype Euclid f a = Euclid {fromEuclid :: f a} deriving (Functor,Foldable,Traversable,Show,Eq,Applicative)
+newtype Euclid f a = Euclid {fromEuclid :: f a} deriving (Functor,Foldable,Traversable,Show,Eq,Ord,Applicative)
 
 type V3 = Euclid V3'
 type V2 = Euclid V2'
@@ -154,7 +155,6 @@ matVecMul (Mat m) v = Euclid (euclideanDotProd v <$> (Euclid <$> m))
 rotation2d :: Floating a => a -> Mat2x2 a
 rotation2d θ = Mat $ V2' (V2' (cos θ) (-sin θ))
                          (V2' (sin θ)  (cos θ))
-
 
 -- >>> rotation2d (pi/2)
 -- Mat {fromMat = V2' (V2' 6.123233995736766e-17 (-1.0)) (V2' 1.0 6.123233995736766e-17)}
