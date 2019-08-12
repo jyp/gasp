@@ -209,7 +209,7 @@ instance Module Double Double where
 instance Module Float Float where
   (*^) = (*)
 
-instance (Ord k,Ring v) => Module v (Map k v) where
+instance (Ord k, Module v v) => Module v (Map k v) where
   s *^ m = fmap (s *) m
 
 -- | Multiplicative monoid
