@@ -129,7 +129,7 @@ index = fst (runState (sequenceA (pure increment)) zero)
   where increment = do x <- get; put (x+1); return x
 
 type SqMat v s = Mat s v v
-newtype Mat s v w = Mat {fromMat :: v (w s)} deriving Show
+newtype Mat s w v = Mat {fromMat :: v (w s)} deriving Show
 
 instance Ring s => Category (Mat s) where
   type Con v = (Applicative v, Traversable v)
@@ -139,18 +139,15 @@ instance Ring s => Category (Mat s) where
 type Mat3x3 s = SqMat V3' s
 type Mat2x2 s = SqMat V2' s
 
-
-
 pattern Mat2x2 :: forall s. s -> s -> s -> s -> Mat s V2' V2'
 pattern Mat2x2 a b c d = Mat (V2' (V2' a b) (V2' c d))
 
 pattern Mat3x3 :: forall s. s -> s -> s -> s -> s -> s -> s -> s -> s -> Mat s V3' V3'
 pattern Mat3x3 a b c d e f g h i = Mat (V3' (V3' a b c) (V3' d e f) (V3' g h i))
 
-matVecMul :: (Foldable f1, Ring b, Applicative f1, Functor f2) => Mat b f2 f1 -> Euclid f1 b -> Euclid f2 b
+matVecMul :: (Foldable f1, Ring b, Applicative f1, Functor f2) => Mat b f1 f2 -> Euclid f1 b -> Euclid f2 b
 matVecMul (Mat m) v = Euclid (euclideanDotProd v <$> (Euclid <$> m))
    where euclideanDotProd x y = add (Euclid x ⊙ Euclid y)
-
 
 rotation2d :: Floating a => a -> Mat2x2 a
 rotation2d θ = Mat $ V2' (V2' (cos θ) (-sin θ))
@@ -166,11 +163,11 @@ crossProductMatrix (V3 a1 a2 a3) = Mat (V3'  (V3' zero (negate a3) a2)
 
 -- | Tensor product
 (⊗) :: (Applicative v, Applicative w, Multiplicative s)
-    => Euclid w s -> Euclid v s -> Mat s v w
+    => Euclid w s -> Euclid v s -> Mat s w v
 Euclid v1 ⊗ Euclid v2 = flip (tensorWith (*)) v1 v2
 
 tensorWith :: (Applicative v, Applicative w)
-           => (s -> t -> u) -> w s -> v t -> Mat u w v
+           => (s -> t -> u) -> w s -> v t -> Mat u v w
 tensorWith f v1 v2 = flip f >$< Mat (pure v2) >*< Mat (pure <$> v1)
 
 identity :: Traversable v => Ring s => Applicative v => SqMat v s
@@ -194,11 +191,14 @@ rotationFromTo from to = c *^ identity + s *^ crossProductMatrix v + (1-c) *^ (v
         c = dotProd x y
         s = norm v
 
-transpose :: Applicative g => Traversable f => Mat a f g -> Mat a g f
+transpose :: Applicative f => Traversable g => Mat a f g -> Mat a g f
 transpose = Mat . sequenceA . fromMat
 
-matMul :: (Traversable u, Ring s, Applicative w, Applicative v, Applicative u) => Mat s u v -> Mat s w u -> Mat s w v
-matMul (transpose -> Mat y) (Mat x)  = tensorWith (\a b -> add (a ⊙ b)) x y
+matMul' :: (Traversable u, Ring s, Applicative w, Applicative v, Applicative u) => Mat s v u -> Mat s u w -> Mat s v w
+matMul' (transpose -> Mat y) (Mat x)  = tensorWith (\a b -> add (a ⊙ b)) x y
+
+matMul :: (Traversable u, Ring s, Applicative w, Applicative v, Applicative u) => Mat s u w -> Mat s v u -> Mat s v w
+matMul = flip matMul'
 
 
 -- >>> let t1 = rotation2d (1::Double) in matMul t1 (transpose t1)
