@@ -204,3 +204,14 @@ matMul = flip matMul'
 -- >>> let t1 = rotation2d (1::Double) in matMul t1 (transpose t1)
 -- Mat {fromMat = V2' (V2' 1.0 0.0) (V2' 0.0 1.0)}
 
+-- The group of Orthogonal matrices, using "Multiplicative" for respecting conventions a bit better
+newtype OrthoMat v s = OrthoMat (SqMat v s)
+
+instance (Ring s, Applicative v, Traversable v) => Multiplicative (OrthoMat v s) where
+  one = OrthoMat id
+  OrthoMat m * OrthoMat n = OrthoMat (m . n)
+
+instance (Ring s, Applicative v, Traversable v) => Division (OrthoMat v s) where
+  recip (OrthoMat m) = OrthoMat (transpose m)
+
+
