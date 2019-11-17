@@ -8,7 +8,7 @@ license:        BSD3
 license-file:   LICENSE
 author:         Jean-Philippe Bernardy
 maintainer:     jeanphilippe.bernardy@gmail.com
-Cabal-Version:  >= 1.12
+Cabal-Version:  1.12
 tested-with:    GHC==8.4.1
 build-type:     Simple
 source-repository head
