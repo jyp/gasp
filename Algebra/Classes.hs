@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses, ConstraintKinds, FlexibleContexts, FlexibleInstances, DeriveGeneric #-}
 module Algebra.Classes where
 
@@ -59,10 +60,11 @@ class Additive a where
   (+) :: a -> a -> a
   zero :: a
   times :: Natural -> a -> a
-  times 0 _ = zero
-  times n x = if r == 0 then y + y else x + y + y
-    where (m,r) = n `Prelude.divMod` 2
-          y = times m x
+  times n0 = if n0 < 0 then Prelude.error "Algebra.Classes.times: negative number of times" else go n0
+    where go 0 _ = zero
+          go n x = if r == 0 then y + y else x + y + y
+            where (m,r) = n `Prelude.divMod` 2
+                  y = go m x
 
 add :: (Foldable t, Additive a) => t a -> a
 add xs = fromSum (foldMap Sum xs)
@@ -218,10 +220,12 @@ class Multiplicative a where
   one :: a
   (^) :: a -> Natural -> a
 
-  (^) _ 0 = one
-  (^) x n = if r == 0 then y * y else x * y * y
-    where (m,r) = n `Prelude.divMod` 2
-          y = (^) y m
+  x0 ^ n0 = if n0 < 0 then Prelude.error "Algebra.Classes.^: negative exponent" else go x0 n0
+    where go _ 0 = one
+          go x n = if r == 0 then y * y else x * y * y
+            where (m,r) = n `Prelude.divMod` 2
+                  y = go x m
+
 
 multiply :: (Multiplicative a, Foldable f) => f a -> a
 multiply xs = fromProduct (foldMap Product xs)
@@ -448,6 +452,7 @@ instance Prelude.Integral a => Group (Data.Ratio.Ratio a) where
 instance Prelude.Integral a => Multiplicative (Data.Ratio.Ratio a) where
   one = Prelude.fromInteger 1
   (*) = (Prelude.*)
+  (^) = (Prelude.^^)
 
 instance Prelude.Integral a => Division (Data.Ratio.Ratio a) where
   recip = Prelude.recip
@@ -467,12 +472,34 @@ ifThenElse True a _ = a
 ifThenElse False _ a = a
 
 
-data InitialAdditive = InitialAdditive :+ InitialAdditive | Zero
-  deriving (Prelude.Show)
-
-instance Additive InitialAdditive where
-  zero = Zero
-  (+) = (:+)
-
 instance Module Rational Double where
   r *^ d = fromRational r * d
+
+data Expr a where
+  Embed :: a -> Expr a
+  Add :: Expr a -> Expr a -> Expr a
+  Mul :: Expr a -> Expr a -> Expr a
+  Zero :: Expr a
+  One :: Expr a
+  deriving (Prelude.Show)
+
+
+instance Additive (Expr a) where
+  zero = Zero
+  Zero + x = x
+  x + Zero = x
+  x + y = Add x y
+
+instance Multiplicative (Expr a) where
+  one = One
+  One * x = x
+  x * One = x
+  x * y = Mul x y
+
+-- >>> times 5 (Embed "x")
+-- Add (Add (Embed "x") (Add (Embed "x") (Embed "x"))) (Add (Embed "x") (Embed "x"))
+
+
+-- >>> (Embed "x")
+-- Zero
+
