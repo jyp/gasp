@@ -18,6 +18,7 @@ infixl 6 +
 
 infixl 7 *
 infixr 7 *^
+infixr 7 *<
 infixl 7 /
 infixl 7 `mod`
 infixl 7 `div`
@@ -195,6 +196,11 @@ instance (Ord k,Group v) => Group (Map k v) where
 -- | Module
 class (AbelianAdditive a, PreRing scalar) => Module scalar a where
   (*^) :: scalar -> a -> a
+
+-- Specialisation of scaling to the common case where the scalar is a type argument.
+(*<) :: Module a (f a) => a -> f a -> f a
+(*<) = (*^)
+
 
 instance Module Integer Integer where
   (*^) = (*)
