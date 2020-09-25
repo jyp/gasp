@@ -312,9 +312,11 @@ class Multiplicative a => Division a where
 
 instance Division Double where
   (/) = (Prelude./)
+  recip = Prelude.recip
 
 instance Division Float where
   (/) = (Prelude./)
+  recip = Prelude.recip
 
 class (Ring a, Division a) => Field a where
   fromRational :: Rational -> a
