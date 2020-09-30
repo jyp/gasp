@@ -11,6 +11,7 @@ import Data.Map (Map)
 import Foreign.C
 import Data.Word
 import Data.Binary
+import Data.Complex
 import GHC.Generics
 
 infixl 6 -
@@ -277,6 +278,7 @@ instance Multiplicative Float where
   (^) = (Prelude.^)
 
 
+
 type SemiRing a = (Multiplicative a, AbelianAdditive a)
 type PreRing a = (SemiRing a, Group a)
 
@@ -447,6 +449,8 @@ instance Integral a => Field (Ratio a) where
 
 -}
 
+--------------------------
+-- Ratio instances
 instance Prelude.Integral a => Additive (Data.Ratio.Ratio a) where
   zero = Prelude.fromInteger 0
   (+) = (Prelude.+)
@@ -465,25 +469,42 @@ instance Prelude.Integral a => Multiplicative (Data.Ratio.Ratio a) where
 instance Prelude.Integral a => Division (Data.Ratio.Ratio a) where
   recip = Prelude.recip
   (/) = (Prelude./)
-
 instance Prelude.Integral a => Module (Data.Ratio.Ratio a) (Data.Ratio.Ratio a) where
   (*^) = (*)
-
 instance Prelude.Integral a => Ring (Data.Ratio.Ratio a) where
   fromInteger = Prelude.fromInteger
-
 instance Prelude.Integral a => Field (Data.Ratio.Ratio a) where
   fromRational = Prelude.fromRational
 
-ifThenElse :: Bool -> t -> t -> t
-ifThenElse True a _ = a
-ifThenElse False _ a = a
 
-
+----------------------
+-- Complex instances
 instance Module Rational Double where
-  r *^ d = fromRational r * d
+    r *^ d = fromRational r * d
+instance Additive a => Additive (Complex a) where
+    (x:+y) + (x':+y')   =  (x+x') :+ (y+y')
+    zero = zero :+ zero
+instance Ring a => Multiplicative (Complex a) where
+    (x:+y) * (x':+y')   =  (x*x'-y*y') :+ (x*y'+y*x')
+    one = one :+ zero
+instance Group a => Group  (Complex a) where
+    (x:+y) - (x':+y')   =  (x-x') :+ (y-y')
+    negate (x:+y)       =  negate x :+ negate y
+instance AbelianAdditive a => AbelianAdditive (Complex a)
+instance Ring a => Module (Complex a) (Complex a) where
+  (*^) = (*)
+instance Ring a => Ring (Complex a) where
+    fromInteger n  =  fromInteger n :+ zero
 
-data Expr a where
+instance  Field a => Division (Complex a)  where
+    {-# SPECIALISE instance Division (Complex Double) #-}
+    (x:+y) / (x':+y')   =  (x*x'+y*y') / d :+ (y*x'-x*y') / d
+      where d   = x'*x' + y'*y'
+
+instance Field a => Field (Complex a) where
+    fromRational a =  fromRational a :+ zero
+
+{-data Expr a where
   Embed :: a -> Expr a
   Add :: Expr a -> Expr a -> Expr a
   Mul :: Expr a -> Expr a -> Expr a
@@ -503,6 +524,14 @@ instance Multiplicative (Expr a) where
   One * x = x
   x * One = x
   x * y = Mul x y
+-}
+
+-- Syntax
+
+ifThenElse :: Bool -> t -> t -> t
+ifThenElse True a _ = a
+ifThenElse False _ a = a
+
 
 -- >>> times 5 (Embed "x")
 -- Add (Add (Embed "x") (Add (Embed "x") (Embed "x"))) (Add (Embed "x") (Embed "x"))
