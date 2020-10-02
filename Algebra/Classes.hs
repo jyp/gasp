@@ -331,7 +331,7 @@ instance Field Double where
 instance Field Float where
   fromRational = Prelude.fromRational
 
-type VectorSpace scalar a = (Field scalar, Module scalar a)
+type VectorSpace scalar a = (Field scalar, Module scalar a, Group a)
 
 class Ring a => EuclideanDomain a where
     {-# MINIMAL (stdUnit | normalize) , (divMod | (div , mod)) #-}

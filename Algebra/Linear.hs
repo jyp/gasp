@@ -1,4 +1,3 @@
-{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ConstraintKinds #-}
@@ -22,6 +21,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE RebindableSyntax #-}
 
 module Algebra.Linear where
 
@@ -90,28 +90,28 @@ instance (Applicative f,Applicative g,Group a) => Group (Mat a f g) where
 instance (Applicative f, Applicative g,Module s a) => Module s (Mat a f g) where
   s *^ Mat t = Mat (((s*^) <$>) <$> t)
 
-class VectorSpace (Scalar v) v => InnerProdSpace v where
-  type Scalar v
-  dotProd :: v -> v -> Scalar v
+-- Would be nice: (forall s. Field s => VectorSpace s (v s)) =>
+-- But appears to be buggy (GHC 8.6)
+class VectorR v => InnerProdSpace v where
+  inner :: Field s => v s -> v s -> s
 
 -- | Hadamard product
 (⊙) :: Applicative v => Multiplicative s => v s -> v s -> v s
 x ⊙ y = (*) <$> x <*> y
 
-instance (Ring a, Field a, Applicative f, Foldable f) => InnerProdSpace (Euclid f a) where
-  type Scalar (Euclid f a) = a
-  dotProd x y = add (x ⊙ y)
+instance (VectorR f) => InnerProdSpace (Euclid f) where
+  inner x y = add (x ⊙ y)
 
-(·) :: InnerProdSpace v => v -> v -> Scalar v
-(·) = dotProd
+(·) :: Field s => InnerProdSpace v => v s -> v s -> s
+(·) = inner
 
-sqNorm :: InnerProdSpace v => v -> Scalar v
-sqNorm x = dotProd x x
+sqNorm :: Field s => InnerProdSpace v => v s -> s
+sqNorm x = inner x x
 
-norm :: InnerProdSpace v => Floating (Scalar v) => v  -> Scalar v
+norm :: Field s => InnerProdSpace v => Floating s => v s  -> s
 norm = sqrt . sqNorm
 
-normalize :: Floating (Scalar v) => InnerProdSpace v => v -> v
+normalize :: (VectorSpace s (v s)) => Floating s => InnerProdSpace v => v s -> v s
 normalize v = recip (norm v) *^ v
 
 -- | Cross product in 3 dimensions https://en.wikipedia.org/wiki/Cross_product
@@ -128,7 +128,7 @@ type SqMat v s = Mat s v v
 newtype Mat s w v = Mat {fromMat :: w (v s)} deriving Show
 
 -- | View of the matrix as a composition of functors.
-newtype Flat w v s = Flat {fromFlat :: w (v s)} deriving (Show,Functor)
+newtype Flat w v s = Flat {fromFlat :: w (v s)} deriving (Show,Functor,Foldable)
 flatMat :: Mat s w v -> Flat w v s
 flatMat (Mat x) = (Flat x)
 matFlat :: Flat w v s -> Mat s w v
@@ -151,10 +151,13 @@ type Mat3x3 s = SqMat V3 s
 type Mat2x2 s = SqMat V2 s
 
 pattern Mat2x2 :: forall s. s -> s -> s -> s -> Mat s V2 V2
-pattern Mat2x2 a b c d = Mat (V2 (V2 a b) (V2 c d))
+pattern Mat2x2 a b c d = Mat (V2 (V2 a c)
+                                 (V2 b d))
 
 pattern Mat3x3 :: forall s. s -> s -> s -> s -> s -> s -> s -> s -> s -> Mat s V3 V3
-pattern Mat3x3 a b c d e f g h i = Mat (V3 (V3 a b c) (V3 d e f) (V3 g h i))
+pattern Mat3x3 a b c d e f g h i = Mat (V3 (V3 a d g)
+                                           (V3 b e h)
+                                           (V3 c f i))
 
 infixr 7 *<
 -- Law:
@@ -170,7 +173,7 @@ u <+> v = (+) <$> u <*> v
 matVecMul :: forall s v w. (Ring s, Foldable v,Applicative v,Applicative w) => Mat s v w -> v s -> w s
 matVecMul (Mat m) x = foldr (<+>) (pure zero) ((*<) <$> x <*> m) -- If GHC gets fixed: use VectorR constraint instead of Applicative, and add instead of foldr.
 
-rotation2d :: Floating a => a -> Mat2x2 a
+rotation2d :: (Group a,Floating a) => a -> Mat2x2 a
 rotation2d θ = transpose $ Mat $ V2 (V2 (cos θ) (-sin θ))
                                     (V2 (sin θ)  (cos θ))
 
@@ -178,9 +181,9 @@ rotation2d θ = transpose $ Mat $ V2 (V2 (cos θ) (-sin θ))
 -- Mat {fromMat = V2' (V2' 6.123233995736766e-17 (-1.0)) (V2' 1.0 6.123233995736766e-17)}
 
 crossProductMatrix :: Group a => V3 a -> Mat3x3 a
-crossProductMatrix (V3 a1 a2 a3) = transpose $ Mat (V3  (V3 zero (negate a3) a2)
-                                                        (V3 a3 zero (negate a1))
-                                                        (V3 (negate a2) a1 zero))
+crossProductMatrix (V3 a1 a2 a3) = Mat3x3 zero  (-a3) a2
+                                          a3    zero  (-a1)
+                                          (-a2) a1    zero
 
 -- | Tensor product
 (⊗) :: (Applicative v, Applicative w, Multiplicative s)
@@ -210,7 +213,7 @@ rotationFromTo from to = c *^ identity + s *^ crossProductMatrix v + (1-c) *^ (v
   where y = to
         x = from
         v = x × y -- axis of rotation
-        c = dotProd x y -- cos of angle
+        c = inner x y -- cos of angle
         s = norm v -- sin of angle
 
 -- >>> let u = (V3 (1::Double) 0 0); v = (V3 0 1 1); in (rotationFromTo u v) `matVecMul` u
