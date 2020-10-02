@@ -26,7 +26,7 @@
 module Algebra.Linear where
 
 import Algebra.Classes hiding ((*<))
-import Prelude (cos,sin,Floating(..),Functor(..),Show(..),Eq(..),Int,fst,flip,($),Ord,Double)
+import Prelude (cos,sin,Floating(..),Functor(..),Show(..),Eq(..),Int,fst,($),Ord,Double)
 import Control.Applicative
 import Data.Foldable
 import Data.Traversable
@@ -79,21 +79,13 @@ instance (Applicative f,Module s a) => Module s (Euclid f a) where
 pureMat :: (Applicative v, Applicative w) => s -> Mat s v w
 pureMat x = Mat (pure (pure x))
 
-(>*<) :: (Applicative v, Applicative w) =>
-               Mat (a -> s) v w -> Mat a v w -> Mat s v w
-Mat f >*< Mat x = Mat (((<*>) <$> f) <*> x)
-
-(>$<) :: (Applicative v, Applicative w) =>
-               (a -> s) -> Mat a v w -> Mat s v w
-f >$< x = pureMat f >*< x
-
 instance (Applicative f,Applicative g,Additive a) => Additive (Mat a f g) where
   zero = pureMat zero
-  x + y =  (+) >$< x >*< y
+  x + y = matFlat ((+) <$> flatMat x <*> flatMat y)
 instance (Applicative f,Applicative g,AbelianAdditive a) => AbelianAdditive (Mat a f g) where
 instance (Applicative f,Applicative g,Group a) => Group (Mat a f g) where
-  negate x = negate >$< x
-  x - y = (-) >$< x >*< y
+  negate x = matFlat (negate <$> flatMat x)
+  x - y = matFlat ((-) <$> flatMat x <*> flatMat y)
 
 instance (Applicative f, Applicative g,Module s a) => Module s (Mat a f g) where
   s *^ Mat t = Mat (((s*^) <$>) <$> t)
@@ -135,6 +127,17 @@ type SqMat v s = Mat s v v
 -- | Matrix type. (w s) is a column. (v s) is a row.
 newtype Mat s w v = Mat {fromMat :: w (v s)} deriving Show
 
+-- | View of the matrix as a composition of functors.
+newtype Flat w v s = Flat {fromFlat :: w (v s)} deriving (Show,Functor)
+flatMat :: Mat s w v -> Flat w v s
+flatMat (Mat x) = (Flat x)
+matFlat :: Flat w v s -> Mat s w v
+matFlat (Flat x) = (Mat x)
+
+instance (Applicative w, Applicative v) => Applicative (Flat w v) where
+  pure x = Flat (pure (pure x))
+  Flat f <*> Flat a = Flat (((<*>) <$> f) <*> a)
+
 -- | Representation of vector as traversable functor
 type VectorR v = (Applicative v,Traversable v)
   -- Fixme: we should be able to use forall s. PreRing s => Module s (v s), but GHC does not like it.
@@ -165,7 +168,7 @@ u <+> v = (+) <$> u <*> v
 
 
 matVecMul :: forall s v w. (Ring s, Foldable v,Applicative v,Applicative w) => Mat s v w -> v s -> w s
-matVecMul (Mat m) x = foldr (<+>) (pure zero) ((*<) <$> x <*> m) -- If GHC gets fixed: use VectorR constraint and add.
+matVecMul (Mat m) x = foldr (<+>) (pure zero) ((*<) <$> x <*> m) -- If GHC gets fixed: use VectorR constraint instead of Applicative, and add instead of foldr.
 
 rotation2d :: Floating a => a -> Mat2x2 a
 rotation2d θ = transpose $ Mat $ V2 (V2 (cos θ) (-sin θ))
@@ -186,7 +189,7 @@ v1 ⊗ v2 = tensorWith (*) v2 v1
 
 tensorWith :: (Applicative v, Applicative w)
            => (s -> t -> u) -> w s -> v t -> Mat u v w
-tensorWith f v1 v2 = f >$< Mat (pure v1) >*< Mat (pure <$> v2)
+tensorWith f v1 v2 = matFlat (f <$> Flat (pure v1) <*> Flat (pure <$> v2))
 
 identity :: Traversable v => Ring s => Applicative v => SqMat v s
 identity = tensorWith (\x y -> if x == y then one else zero) index index
