@@ -1,3 +1,4 @@
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ConstraintKinds #-}
@@ -24,8 +25,8 @@
 
 module Algebra.Linear where
 
-import Algebra.Classes
-import Prelude (cos,sin,Floating(..),Functor(..),Show(..),Eq(..),Int,fst,flip,($),Ord)
+import Algebra.Classes hiding ((*<))
+import Prelude (cos,sin,Floating(..),Functor(..),Show(..),Eq(..),Int,fst,flip,($),Ord,Double)
 import Control.Applicative
 import Data.Foldable
 import Data.Traversable
@@ -101,6 +102,7 @@ class VectorSpace (Scalar v) v => InnerProdSpace v where
   type Scalar v
   dotProd :: v -> v -> Scalar v
 
+-- | Hadamard product
 (⊙) :: Applicative v => Multiplicative s => v s -> v s -> v s
 x ⊙ y = (*) <$> x <*> y
 
@@ -120,7 +122,7 @@ norm = sqrt . sqNorm
 normalize :: Floating (Scalar v) => InnerProdSpace v => v -> v
 normalize v = recip (norm v) *^ v
 
--- | Cross product https://en.wikipedia.org/wiki/Cross_product
+-- | Cross product in 3 dimensions https://en.wikipedia.org/wiki/Cross_product
 (×) :: Ring a => V3 a -> V3 a -> V3 a
 (V3 a1 a2 a3) × (V3 b1 b2 b3) = V3 (a2*b3 - a3*b2)  (negate (a1*b3 - a3*b1)) (a1*b2 - a2*b1)
 
@@ -129,52 +131,68 @@ index = fst (runState (sequenceA (pure increment)) zero)
   where increment = do x <- get; put (x+1); return x
 
 type SqMat v s = Mat s v v
-newtype Mat s w v = Mat {fromMat :: v (w s)} deriving Show
+
+-- | Matrix type. (w s) is a column. (v s) is a row.
+newtype Mat s w v = Mat {fromMat :: w (v s)} deriving Show
+
+-- | Representation of vector as traversable functor
+type VectorR v = (Applicative v,Traversable v)
+  -- Fixme: we should be able to use forall s. PreRing s => Module s (v s), but GHC does not like it.
 
 instance Ring s => Category (Mat s) where
-  type Con v = (Applicative v, Traversable v)
+  type Con v = VectorR v
   (.) = matMul
   id = identity
 
-type Mat3x3 s = SqMat V3' s
-type Mat2x2 s = SqMat V2' s
+type Mat3x3 s = SqMat V3 s
+type Mat2x2 s = SqMat V2 s
 
-pattern Mat2x2 :: forall s. s -> s -> s -> s -> Mat s V2' V2'
-pattern Mat2x2 a b c d = Mat (V2' (V2' a b) (V2' c d))
+pattern Mat2x2 :: forall s. s -> s -> s -> s -> Mat s V2 V2
+pattern Mat2x2 a b c d = Mat (V2 (V2 a b) (V2 c d))
 
-pattern Mat3x3 :: forall s. s -> s -> s -> s -> s -> s -> s -> s -> s -> Mat s V3' V3'
-pattern Mat3x3 a b c d e f g h i = Mat (V3' (V3' a b c) (V3' d e f) (V3' g h i))
+pattern Mat3x3 :: forall s. s -> s -> s -> s -> s -> s -> s -> s -> s -> Mat s V3 V3
+pattern Mat3x3 a b c d e f g h i = Mat (V3 (V3 a b c) (V3 d e f) (V3 g h i))
 
-matVecMul :: (Foldable f1, Ring b, Applicative f1, Functor f2) => Mat b f1 f2 -> Euclid f1 b -> Euclid f2 b
-matVecMul (Mat m) v = Euclid (euclideanDotProd v <$> (Euclid <$> m))
-   where euclideanDotProd x y = add (Euclid x ⊙ Euclid y)
+infixr 7 *<
+-- Law:
+-- (*<) = (*^)
+(*<) :: (Functor f, Multiplicative b) => b -> f b -> f b
+s *< v = (s*) <$> v
+
+
+(<+>) :: (Applicative f, Additive b) => f b -> f b -> f b
+u <+> v = (+) <$> u <*> v
+
+
+matVecMul :: forall s v w. (Ring s, Foldable v,Applicative v,Applicative w) => Mat s v w -> v s -> w s
+matVecMul (Mat m) x = foldr (<+>) (pure zero) ((*<) <$> x <*> m) -- If GHC gets fixed: use VectorR constraint and add.
 
 rotation2d :: Floating a => a -> Mat2x2 a
-rotation2d θ = Mat $ V2' (V2' (cos θ) (-sin θ))
-                         (V2' (sin θ)  (cos θ))
+rotation2d θ = transpose $ Mat $ V2 (V2 (cos θ) (-sin θ))
+                                    (V2 (sin θ)  (cos θ))
 
 -- >>> rotation2d (pi/2)
 -- Mat {fromMat = V2' (V2' 6.123233995736766e-17 (-1.0)) (V2' 1.0 6.123233995736766e-17)}
 
 crossProductMatrix :: Group a => V3 a -> Mat3x3 a
-crossProductMatrix (V3 a1 a2 a3) = Mat (V3'  (V3' zero (negate a3) a2)
-                                             (V3' a3 zero (negate a1))
-                                             (V3' (negate a2) a1 zero))
+crossProductMatrix (V3 a1 a2 a3) = transpose $ Mat (V3  (V3 zero (negate a3) a2)
+                                                        (V3 a3 zero (negate a1))
+                                                        (V3 (negate a2) a1 zero))
 
 -- | Tensor product
 (⊗) :: (Applicative v, Applicative w, Multiplicative s)
-    => Euclid w s -> Euclid v s -> Mat s w v
-Euclid v1 ⊗ Euclid v2 = flip (tensorWith (*)) v1 v2
+    => w s -> v s -> Mat s w v
+v1 ⊗ v2 = tensorWith (*) v2 v1
 
 tensorWith :: (Applicative v, Applicative w)
            => (s -> t -> u) -> w s -> v t -> Mat u v w
-tensorWith f v1 v2 = flip f >$< Mat (pure v2) >*< Mat (pure <$> v1)
+tensorWith f v1 v2 = f >$< Mat (pure v1) >*< Mat (pure <$> v2)
 
 identity :: Traversable v => Ring s => Applicative v => SqMat v s
 identity = tensorWith (\x y -> if x == y then one else zero) index index
 
-diagonal :: Traversable v => Ring s => Applicative v => Euclid v s -> SqMat v s
-diagonal (Euclid v) = tensorWith (\x (y,a) -> if x == y then a else zero) index ((,) <$> index <*> v)
+diagonal :: Traversable v => Ring s => Applicative v => v s -> SqMat v s
+diagonal v = tensorWith (\x (y,a) -> if x == y then a else zero) index ((,) <$> index <*> v)
 
 -- | 3d rotation around given axis
 rotation3d :: Ring a => Floating a => a -> V3 a -> Mat3x3 a
@@ -182,27 +200,30 @@ rotation3d θ u = cos θ *^ identity +
                  sin θ *^ crossProductMatrix u +
                  (1 - cos θ) *^ (u ⊗ u)
 
+-- | 3d rotation mapping the direction of 'from' to that of 'to'
 rotationFromTo :: (Floating a, Module a a,Field a)
                => V3 a -> V3 a -> Mat3x3 a
 rotationFromTo from to = c *^ identity + s *^ crossProductMatrix v + (1-c) *^ (v ⊗ v)
   where y = to
         x = from
-        v = x × y
-        c = dotProd x y
-        s = norm v
+        v = x × y -- axis of rotation
+        c = dotProd x y -- cos of angle
+        s = norm v -- sin of angle
 
-transpose :: Applicative f => Traversable g => Mat a f g -> Mat a g f
+-- >>> let u = (V3 (1::Double) 0 0); v = (V3 0 1 1); in (rotationFromTo u v) `matVecMul` u
+-- Euclid {fromEuclid = VNext (VNext (VNext VZero 0.0) 1.4142135623730951) 1.4142135623730951}
+
+transpose :: Applicative g => Traversable f => Mat a f g -> Mat a g f
 transpose = Mat . sequenceA . fromMat
 
-matMul' :: (Traversable u, Ring s, Applicative w, Applicative v, Applicative u) => Mat s v u -> Mat s u w -> Mat s v w
-matMul' (transpose -> Mat y) (Mat x)  = tensorWith (\a b -> add (a ⊙ b)) x y
-
 matMul :: (Traversable u, Ring s, Applicative w, Applicative v, Applicative u) => Mat s u w -> Mat s v u -> Mat s v w
-matMul = flip matMul'
+matMul a (Mat b) = Mat (matVecMul a <$> b)
 
 
--- >>> let t1 = rotation2d (1::Double) in matMul t1 (transpose t1)
--- Mat {fromMat = V2' (V2' 1.0 0.0) (V2' 0.0 1.0)}
+-- >>> let t1 = rotation2d (1::Double) in matMul (transpose t1) t1
+-- Mat {fromMat = VNext (VNext VZero (VNext (VNext VZero 1.0) 0.0)) (VNext (VNext VZero 0.0) 1.0)}
+
+
 
 -- The group of Orthogonal matrices, using "Multiplicative" for respecting conventions a bit better
 newtype OrthoMat v s = OrthoMat (SqMat v s)
