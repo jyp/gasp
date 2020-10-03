@@ -50,7 +50,7 @@ newtype Exponential a = Exponential {fromExponential :: a}
 instance Additive a => Multiplicative (Exponential a) where
   Exponential a * Exponential b = Exponential (a + b)
   one = Exponential zero
-  Exponential a ^ n = Exponential (times n a)
+  Exponential a ^+ n = Exponential (times n a)
 
 instance Group a => Division (Exponential a) where
   recip (Exponential a) = Exponential (negate a)
@@ -219,9 +219,9 @@ instance (Ord k, Module v v) => Module v (Map k v) where
 class Multiplicative a where
   (*) :: a -> a -> a
   one :: a
-  (^) :: a -> Natural -> a
+  (^+) :: a -> Natural -> a
 
-  x0 ^ n0 = if n0 < 0 then Prelude.error "Algebra.Classes.^: negative exponent" else go x0 n0
+  x0 ^+ n0 = if n0 < 0 then Prelude.error "Algebra.Classes.^: negative exponent" else go x0 n0
     where go _ 0 = one
           go x n = if r == 0 then y * y else x * y * y
             where (m,r) = n `Prelude.divMod` 2
@@ -234,42 +234,41 @@ multiply xs = fromProduct (foldMap Product xs)
 instance Multiplicative Integer where
   (*) = (Prelude.*)
   one = 1
-  (^) = (Prelude.^)
+  (^+) = (Prelude.^)
 
 instance Multiplicative CInt where
   (*) = (Prelude.*)
   one = 1
-  (^) = (Prelude.^)
+  (^+) = (Prelude.^)
 
 instance Multiplicative Word32 where
   (*) = (Prelude.*)
   one = 1
-  (^) = (Prelude.^)
 
 instance Multiplicative Word16 where
   (*) = (Prelude.*)
   one = 1
-  (^) = (Prelude.^)
+  (^+) = (Prelude.^)
 
 instance Multiplicative Word8 where
   (*) = (Prelude.*)
   one = 1
-  (^) = (Prelude.^)
+  (^+) = (Prelude.^)
 
 instance Multiplicative Int where
   (*) = (Prelude.*)
   one = 1
-  (^) = (Prelude.^)
+  (^+) = (Prelude.^)
 
 instance Multiplicative Double where
   (*) = (Prelude.*)
   one = 1
-  (^) = (Prelude.^)
+  (^+) = (Prelude.^)
 
 instance Multiplicative Float where
   (*) = (Prelude.*)
   one = 1
-  (^) = (Prelude.^)
+  (^+) = (Prelude.^)
 
 
 
@@ -306,13 +305,19 @@ class Multiplicative a => Division a where
   (/) :: a -> a -> a
   x / y           =  x * recip y
 
+  (^) :: a -> Integer -> a
+  b ^ n | n < 0 = recip b ^+ negate n
+        | True  = b ^+ n
+
 instance Division Double where
   (/) = (Prelude./)
   recip = Prelude.recip
+  (^) = (Prelude.^^)
 
 instance Division Float where
   (/) = (Prelude./)
   recip = Prelude.recip
+  (^) = (Prelude.^^)
 
 class (Ring a, Division a) => Field a where
   fromRational :: Rational -> a
@@ -457,11 +462,12 @@ instance Prelude.Integral a => Group (Data.Ratio.Ratio a) where
 instance Prelude.Integral a => Multiplicative (Data.Ratio.Ratio a) where
   one = Prelude.fromInteger 1
   (*) = (Prelude.*)
-  (^) = (Prelude.^^)
+  (^+) = (Prelude.^)
 
 instance Prelude.Integral a => Division (Data.Ratio.Ratio a) where
   recip = Prelude.recip
   (/) = (Prelude./)
+  (^) = (Prelude.^^)
 instance Prelude.Integral a => Module (Data.Ratio.Ratio a) (Data.Ratio.Ratio a) where
   (*^) = (*)
 instance Prelude.Integral a => Ring (Data.Ratio.Ratio a) where
@@ -486,6 +492,8 @@ instance Group a => Group  (Complex a) where
 instance AbelianAdditive a => AbelianAdditive (Complex a)
 instance Ring a => Module (Complex a) (Complex a) where
   (*^) = (*)
+instance Ring a => Module a (Complex a) where
+  s *^ (x :+ y) =  (s *^ x :+ s *^ y)
 instance Ring a => Ring (Complex a) where
     fromInteger n  =  fromInteger n :+ zero
 
