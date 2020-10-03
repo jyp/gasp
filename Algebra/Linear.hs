@@ -32,6 +32,25 @@ import Data.Foldable
 import Data.Traversable
 import Control.Monad.State
 import Algebra.Category
+
+infixr 7 *<
+
+type VectorSpace scalar a = (Field scalar, Module scalar a, Group a)
+-- Because of the existence of bases, vector spaces can always be made representable (Traversable, Applicative) functors.
+-- So we'd be better off using the following definition:
+
+-- | Representation of vector as traversable functor
+type VectorR v = (Applicative v,Traversable v)
+-- ... but this is missing the link with *^ for module.  We should be
+-- able to add forall s. PreRing s => Module s (v s), but GHC does not
+-- like it. (In fact, QuantifiedConstraints is very buggy in ghc 8.6)
+
+class VectorR v => InnerProdSpace v where
+  inner :: Field s => v s -> v s -> s
+
+--------------------------------------------------------------
+-- Construction of finite vectors
+
 data VZero a = VZero deriving (Functor,Foldable,Traversable,Show,Eq,Ord)
 instance Applicative VZero where
   pure _ = VZero
@@ -54,7 +73,10 @@ pattern V2' x y = VNext (V1' x) y
 pattern V3' :: forall a. a -> a -> a -> V3' a
 pattern V3' x y z = VNext (V2' x y) z
 
--- | Make a Euclidean vector out of a traversable functor
+--------------------------------------------
+-- Euclidean spaces with a (inner product)
+
+-- | Make a Euclidean vector out of a traversable functor. (The p)
 newtype Euclid f a = Euclid {fromEuclid :: f a} deriving (Functor,Foldable,Traversable,Show,Eq,Ord,Applicative)
 
 type V3 = Euclid V3'
@@ -90,10 +112,6 @@ instance (Applicative f,Applicative g,Group a) => Group (Mat a f g) where
 instance (Applicative f, Applicative g,Module s a) => Module s (Mat a f g) where
   s *^ Mat t = Mat (((s*^) <$>) <$> t)
 
--- Would be nice: (forall s. Field s => VectorSpace s (v s)) =>
--- But appears to be buggy (GHC 8.6)
-class VectorR v => InnerProdSpace v where
-  inner :: Field s => v s -> v s -> s
 
 -- | Hadamard product
 (⊙) :: Applicative v => Multiplicative s => v s -> v s -> v s
@@ -138,9 +156,6 @@ instance (Applicative w, Applicative v) => Applicative (Flat w v) where
   pure x = Flat (pure (pure x))
   Flat f <*> Flat a = Flat (((<*>) <$> f) <*> a)
 
--- | Representation of vector as traversable functor
-type VectorR v = (Applicative v,Traversable v)
-  -- Fixme: we should be able to use forall s. PreRing s => Module s (v s), but GHC does not like it.
 
 instance Ring s => Category (Mat s) where
   type Con v = VectorR v
@@ -159,9 +174,7 @@ pattern Mat3x3 a b c d e f g h i = Mat (V3 (V3 a d g)
                                            (V3 b e h)
                                            (V3 c f i))
 
-infixr 7 *<
--- Law:
--- (*<) = (*^)
+-- | Vector scaling. If Module a (f a), then (*^) must be the same as (*<).
 (*<) :: (Functor f, Multiplicative b) => b -> f b -> f b
 s *< v = (s*) <$> v
 

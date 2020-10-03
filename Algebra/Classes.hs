@@ -19,7 +19,6 @@ infixl 6 +
 
 infixl 7 *
 infixr 7 *^
-infixr 7 *<
 infixl 7 /
 infixl 7 `mod`
 infixl 7 `div`
@@ -198,11 +197,6 @@ instance (Ord k,Group v) => Group (Map k v) where
 class (AbelianAdditive a, PreRing scalar) => Module scalar a where
   (*^) :: scalar -> a -> a
 
--- Specialisation of scaling to the common case where the scalar is a type argument.
-(*<) :: Module a (f a) => a -> f a -> f a
-(*<) = (*^)
-
-
 instance Module Integer Integer where
   (*^) = (*)
 
@@ -331,7 +325,6 @@ instance Field Double where
 instance Field Float where
   fromRational = Prelude.fromRational
 
-type VectorSpace scalar a = (Field scalar, Module scalar a, Group a)
 
 class Ring a => EuclideanDomain a where
     {-# MINIMAL (stdUnit | normalize) , (divMod | (div , mod)) #-}
