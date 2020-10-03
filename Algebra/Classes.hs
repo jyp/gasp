@@ -22,6 +22,8 @@ infixr 7 *^
 infixl 7 /
 infixl 7 `mod`
 infixl 7 `div`
+infixr 8 ^
+infixr 8 ^+
 
 type Natural = Integer
 
