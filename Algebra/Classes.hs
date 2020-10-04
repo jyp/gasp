@@ -246,6 +246,7 @@ instance Multiplicative CInt where
 instance Multiplicative Word32 where
   (*) = (Prelude.*)
   one = 1
+  (^+) = (Prelude.^)
 
 instance Multiplicative Word16 where
   (*) = (Prelude.*)
