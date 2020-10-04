@@ -22,6 +22,7 @@ library
   build-depends: containers
   build-depends: binary
   build-depends: mtl
+  build-depends: QuickCheck
 
   exposed-modules:
        Algebra.Classes

@@ -28,7 +28,7 @@ module Algebra.Linear where
 import Algebra.Classes hiding ((*<))
 import Prelude (cos,sin,Floating(..),Functor(..),Show(..),Eq(..),Int,fst,($),Ord,Double)
 import Control.Applicative
-import Data.Foldable
+import Data.Foldable hiding (sum,product)
 import Data.Traversable
 import Control.Monad.State
 import Algebra.Category
@@ -118,7 +118,7 @@ instance (Applicative f, Applicative g,Module s a) => Module s (Mat a f g) where
 x ⊙ y = (*) <$> x <*> y
 
 instance (VectorR f) => InnerProdSpace (Euclid f) where
-  inner x y = add (x ⊙ y)
+  inner x y = sum (x ⊙ y) -- fixme
 
 (·) :: Field s => InnerProdSpace v => v s -> v s -> s
 (·) = inner

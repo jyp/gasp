@@ -1,9 +1,15 @@
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses, ConstraintKinds, FlexibleContexts, FlexibleInstances, DeriveGeneric #-}
 module Algebra.Classes where
 
-import Prelude as Algebra.Classes (Int,Integer,Float,Double, Foldable (..), (==), Monoid(..), Ord(..)
-                                  ,Real(..), Enum(..), snd, Rational, Functor(..), Eq(..), Bool(..), Semigroup(..))
+import Prelude (Int,Integer,Float,Double, (==), Monoid(..), Ord(..), Foldable,
+                foldMap, Char,
+                 Real(..), Enum(..), snd, Rational, Functor(..), Eq(..), Bool(..), Semigroup(..), Show(..), uncurry)
+
 import qualified Prelude
 import qualified Data.Ratio
 import qualified Data.Map.Strict as M
@@ -13,6 +19,10 @@ import Data.Word
 import Data.Binary
 import Data.Complex
 import GHC.Generics
+import Test.QuickCheck
+import Control.Applicative
+
+-- import Data.Functor.Utils ((#.))
 
 infixl 6 -
 infixl 6 +
@@ -58,19 +68,52 @@ instance Group a => Division (Exponential a) where
   recip (Exponential a) = Exponential (negate a)
   Exponential a / Exponential b = Exponential (a - b)
 
--- | Additive monoid
-class Additive a where
-  (+) :: a -> a -> a
-  zero :: a
-  times :: Natural -> a -> a
-  times n0 = if n0 < 0 then Prelude.error "Algebra.Classes.times: negative number of times" else go n0
+timesDefault :: (Additive a2, Prelude.Integral a1) => a1 -> a2 -> a2
+timesDefault n0 = if n0 < 0 then Prelude.error "Algebra.Classes.times: negative number of times" else go n0
     where go 0 _ = zero
           go n x = if r == 0 then y + y else x + y + y
             where (m,r) = n `Prelude.divMod` 2
                   y = go m x
 
-add :: (Foldable t, Additive a) => t a -> a
-add xs = fromSum (foldMap Sum xs)
+-- | Additive monoid
+class Additive a where
+  (+) :: a -> a -> a
+  zero :: a
+  times :: Natural -> a -> a
+  times = timesDefault
+
+class (Arbitrary a, Show a) => TestEqual a where
+  (=.=) :: a -> a -> Property
+
+infix 0 =.=
+
+instance Multiplicative Property where
+  one = property True
+  (*) = (.&&.)
+
+law_zero_plus :: forall a. (Additive a, TestEqual a) => a -> Property
+law_zero_plus n = label "zero/plus" (zero + n =.= n)
+
+law_plus_zero :: (Additive a, TestEqual a) => a -> Property
+law_plus_zero n = label "plus/zero" (n + zero =.= n)
+
+law_plus_assoc :: (Additive a, TestEqual a) => a -> a -> a -> Property
+law_plus_assoc m n o = label "plus/assoc" (n + (m + o) =.= (n + m) + o)
+
+law_times :: (TestEqual a, Additive a) => Positive Integer -> a -> Property
+law_times (Positive m) n = label "times" (times m n =.= timesDefault m n)
+
+laws_additive :: forall a. (Additive a, TestEqual a) => Property
+laws_additive = product [property (law_zero_plus @a)
+                        ,property (law_plus_zero @a)
+                        ,property (law_plus_assoc @a)
+                        ,property (law_times @a)]
+
+instance TestEqual Int where (=.=) = (===)
+
+
+sum :: (Foldable t, Additive a) => t a -> a
+sum xs = fromSum (foldMap Sum xs)
 
 instance Additive Integer where
   (+) = (Prelude.+)
@@ -120,6 +163,10 @@ instance (Ord k,Additive v) => Additive (Map k v) where
 class Additive r => DecidableZero r where
   isZero :: r -> Bool
 
+law_decidable_zero :: forall a. (DecidableZero a, TestEqual a) => Property
+law_decidable_zero = property (isZero (zero @a))
+
+
 instance DecidableZero Integer where
   isZero = (== 0)
 instance DecidableZero CInt where
@@ -141,12 +188,20 @@ instance (Ord k,DecidableZero v) => DecidableZero (Map k v) where
 
 class Additive a => AbelianAdditive a
   -- just a law.
+
+law_plus_comm :: (TestEqual a, Additive a) => a -> a -> Property
+law_plus_comm m n = label "plus/comm" (m + n =.= n + m)
+
+
 instance AbelianAdditive Integer
 instance AbelianAdditive CInt
 instance AbelianAdditive Int
 instance AbelianAdditive Double
 instance AbelianAdditive Float
 instance (Ord k,AbelianAdditive v) => AbelianAdditive (Map k v)
+
+multDefault :: Group a => Natural -> a -> a
+multDefault n x = if n < 0 then negate (times (negate n) x) else times n x
 
 class Additive a => Group a where
   {-# MINIMAL (negate | (-)) #-}
@@ -155,7 +210,19 @@ class Additive a => Group a where
   negate :: a -> a
   negate b = zero - b
   mult :: Integer -> a -> a
-  mult n x = if n < 0 then negate (times (negate n) x) else times n x
+  mult = multDefault
+
+law_negate_minus :: (TestEqual a, Group a) => a -> a -> Property
+law_negate_minus m n = label "minus/negate" (m + negate n =.= m - n)
+
+law_mult :: (TestEqual a, Group a) => Integer -> a -> Property
+law_mult m n = label "mult" (mult m n =.= multDefault m n)
+
+
+laws_group :: forall a. (Group a, TestEqual a) => Property
+laws_group = laws_additive @a .&&. product [property (law_negate_minus @a)
+                                           ,property (law_mult @a)]
+
 
 instance Group Integer where
   (-) = (Prelude.-)
@@ -199,6 +266,30 @@ instance (Ord k,Group v) => Group (Map k v) where
 class (AbelianAdditive a, PreRing scalar) => Module scalar a where
   (*^) :: scalar -> a -> a
 
+law_module_zero :: forall s a. (Module s a, TestEqual a) => s -> Property
+law_module_zero s = label "module/zero" (s *^ zero =.= zero @a)
+
+law_module_one :: forall s a. (Module s a, TestEqual a) => a -> Property
+law_module_one x = label "module/zero" ((one @s) *^ x =.= x)
+
+law_module_sum :: forall s a. (Module s a, TestEqual a) => s -> a -> a -> Property
+law_module_sum s x y = label "module/distr/left" (s *^ (x + y) =.= s*^x + s *^ y)
+
+law_module_sum_left :: forall s a. (Module s a, TestEqual a) => s -> s -> a -> Property
+law_module_sum_left s t x = label "module/distr/right" ((s + t) *^ x =.= s*^x + t *^ x)
+
+laws_module :: forall s a. (Module s a, TestEqual a, Arbitrary s, Show s) => Property
+laws_module = laws_additive @a .&&. product [property (law_module_zero @s @a)
+                                            ,property (law_module_one @s @a)
+                                            ,property (law_module_sum @s @a)
+                                            ,property (law_module_sum_left @s @a)]
+
+instance (Ord x, Show x, Arbitrary x,TestEqual a,Additive a) => TestEqual (Map x a) where
+  x =.= y = product (uncurry (=.=) <$> M.unionWith collapse ((,zero) <$> x) ((zero,) <$> y))
+    where collapse :: (a,b) -> (c,d) -> (a,d)
+          collapse (a,_) (_,b) = (a,b)
+
+
 instance Module Integer Integer where
   (*^) = (*)
 
@@ -230,8 +321,8 @@ class Multiplicative a where
                   y = go x m
 
 
-multiply :: (Multiplicative a, Foldable f) => f a -> a
-multiply xs = fromProduct (foldMap Product xs)
+product :: (Multiplicative a, Foldable f) => f a -> a
+product xs = fromProduct (foldMap Product xs)
 
 instance Multiplicative Integer where
   (*) = (Prelude.*)
