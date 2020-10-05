@@ -270,7 +270,7 @@ law_module_zero :: forall s a. (Module s a, TestEqual a) => s -> Property
 law_module_zero s = label "module/zero" (s *^ zero =.= zero @a)
 
 law_module_one :: forall s a. (Module s a, TestEqual a) => a -> Property
-law_module_one x = label "module/zero" ((one @s) *^ x =.= x)
+law_module_one x = label "module/one" ((one @s) *^ x =.= x)
 
 law_module_sum :: forall s a. (Module s a, TestEqual a) => s -> a -> a -> Property
 law_module_sum s x y = label "module/distr/left" (s *^ (x + y) =.= s*^x + s *^ y)
@@ -278,12 +278,18 @@ law_module_sum s x y = label "module/distr/left" (s *^ (x + y) =.= s*^x + s *^ y
 law_module_sum_left :: forall s a. (Module s a, TestEqual a) => s -> s -> a -> Property
 law_module_sum_left s t x = label "module/distr/right" ((s + t) *^ x =.= s*^x + t *^ x)
 
+law_module_mul :: forall s a. (Module s a, TestEqual a) => s -> s -> a -> Property
+law_module_mul s t x = label "module/mul/assoc" ((s * t) *^ x =.= s *^ t *^ x)
+
 laws_module :: forall s a. (Module s a, TestEqual a, Arbitrary s, Show s) => Property
 laws_module = laws_additive @a .&&. product [property (law_module_zero @s @a)
                                             ,property (law_module_one @s @a)
                                             ,property (law_module_sum @s @a)
-                                            ,property (law_module_sum_left @s @a)]
+                                            ,property (law_module_sum_left @s @a)
+                                            ,property (law_module_mul @s @a)
+                                            ]
 
+-- Comparision of maps with absence of a key equivalent to zero value.
 instance (Ord x, Show x, Arbitrary x,TestEqual a,Additive a) => TestEqual (Map x a) where
   x =.= y = product (uncurry (=.=) <$> M.unionWith collapse ((,zero) <$> x) ((zero,) <$> y))
     where collapse :: (a,b) -> (c,d) -> (a,d)
@@ -305,8 +311,8 @@ instance Module Double Double where
 instance Module Float Float where
   (*^) = (*)
 
-instance (Ord k, Module v v) => Module v (Map k v) where
-  s *^ m = fmap (s *) m
+instance (Ord k, Module a b) => Module a (Map k b) where
+  s *^ m = fmap (s *^) m
 
 -- | Multiplicative monoid
 class Multiplicative a where
@@ -476,16 +482,6 @@ instance  Integral Integer  where
     rem       =  Prelude.rem
     toInteger = Prelude.toInteger
 
-{-
-Note: the following is not quite what we intuitively want, because
-
-class Field a => AlgebraicallyClosed  a where
-  sqrt :: a -> (a,a)
-
-AlgebraicallyClosed numbers have two square roots.
-
--}
-
 
 gcd             :: (Integral a) => a -> a -> a
 {-# NOINLINE [1] gcd #-}
@@ -586,10 +582,22 @@ ifThenElse True a _ = a
 ifThenElse False _ a = a
 
 
+
 -- >>> times 5 (Embed "x")
 -- Add (Add (Embed "x") (Add (Embed "x") (Embed "x"))) (Add (Embed "x") (Embed "x"))
 
 
 -- >>> (Embed "x")
 -- Zero
+
+
+{-
+Note: the following is not quite what we intuitively want, because
+
+class Field a => AlgebraicallyClosed  a where
+  sqrt :: a -> (a,a)
+
+AlgebraicallyClosed numbers have two square roots.
+
+-}
 
