@@ -91,17 +91,20 @@ instance Multiplicative Property where
   one = property True
   (*) = (.&&.)
 
+nameLaw :: Testable prop => Prelude.String -> prop -> Property
+nameLaw x p = label x (counterexample x p)
+
 law_zero_plus :: forall a. (Additive a, TestEqual a) => a -> Property
-law_zero_plus n = label "zero/plus" (zero + n =.= n)
+law_zero_plus n = nameLaw "zero/plus" (zero + n =.= n)
 
 law_plus_zero :: (Additive a, TestEqual a) => a -> Property
-law_plus_zero n = label "plus/zero" (n + zero =.= n)
+law_plus_zero n = nameLaw "plus/zero" (n + zero =.= n)
 
 law_plus_assoc :: (Additive a, TestEqual a) => a -> a -> a -> Property
-law_plus_assoc m n o = label "plus/assoc" (n + (m + o) =.= (n + m) + o)
+law_plus_assoc m n o = nameLaw "plus/assoc" (n + (m + o) =.= (n + m) + o)
 
 law_times :: (TestEqual a, Additive a) => Positive Integer -> a -> Property
-law_times (Positive m) n = label "times" (times m n =.= timesDefault m n)
+law_times (Positive m) n = nameLaw "times" (times m n =.= timesDefault m n)
 
 laws_additive :: forall a. (Additive a, TestEqual a) => Property
 laws_additive = product [property (law_zero_plus @a)
@@ -190,8 +193,10 @@ class Additive a => AbelianAdditive a
   -- just a law.
 
 law_plus_comm :: (TestEqual a, Additive a) => a -> a -> Property
-law_plus_comm m n = label "plus/comm" (m + n =.= n + m)
+law_plus_comm m n = nameLaw "plus/comm" (m + n =.= n + m)
 
+laws_abelian_additive :: forall a. (Group a, TestEqual a) => Property
+laws_abelian_additive = laws_additive @a .&&. product [property (law_plus_comm @a)]
 
 instance AbelianAdditive Integer
 instance AbelianAdditive CInt
@@ -213,15 +218,18 @@ class Additive a => Group a where
   mult = multDefault
 
 law_negate_minus :: (TestEqual a, Group a) => a -> a -> Property
-law_negate_minus m n = label "minus/negate" (m + negate n =.= m - n)
+law_negate_minus m n = nameLaw "minus/negate" (m + negate n =.= m - n)
 
 law_mult :: (TestEqual a, Group a) => Integer -> a -> Property
-law_mult m n = label "mult" (mult m n =.= multDefault m n)
+law_mult m n = nameLaw "mult" (mult m n =.= multDefault m n)
 
 
 laws_group :: forall a. (Group a, TestEqual a) => Property
 laws_group = laws_additive @a .&&. product [property (law_negate_minus @a)
                                            ,property (law_mult @a)]
+
+laws_abelian_group :: forall a. (Group a, TestEqual a) => Property
+laws_abelian_group = laws_group @a .&&. product [property (law_plus_comm @a)]
 
 
 instance Group Integer where
@@ -267,19 +275,19 @@ class (AbelianAdditive a, PreRing scalar) => Module scalar a where
   (*^) :: scalar -> a -> a
 
 law_module_zero :: forall s a. (Module s a, TestEqual a) => s -> Property
-law_module_zero s = label "module/zero" (s *^ zero =.= zero @a)
+law_module_zero s = nameLaw "module/zero" (s *^ zero =.= zero @a)
 
 law_module_one :: forall s a. (Module s a, TestEqual a) => a -> Property
-law_module_one x = label "module/one" ((one @s) *^ x =.= x)
+law_module_one x = nameLaw "module/one" ((one @s) *^ x =.= x)
 
 law_module_sum :: forall s a. (Module s a, TestEqual a) => s -> a -> a -> Property
-law_module_sum s x y = label "module/distr/left" (s *^ (x + y) =.= s*^x + s *^ y)
+law_module_sum s x y = nameLaw "module/distr/left" (s *^ (x + y) =.= s*^x + s *^ y)
 
 law_module_sum_left :: forall s a. (Module s a, TestEqual a) => s -> s -> a -> Property
-law_module_sum_left s t x = label "module/distr/right" ((s + t) *^ x =.= s*^x + t *^ x)
+law_module_sum_left s t x = nameLaw "module/distr/right" ((s + t) *^ x =.= s*^x + t *^ x)
 
 law_module_mul :: forall s a. (Module s a, TestEqual a) => s -> s -> a -> Property
-law_module_mul s t x = label "module/mul/assoc" ((s * t) *^ x =.= s *^ t *^ x)
+law_module_mul s t x = nameLaw "module/mul/assoc" ((s * t) *^ x =.= s *^ t *^ x)
 
 laws_module :: forall s a. (Module s a, TestEqual a, Arbitrary s, Show s) => Property
 laws_module = laws_additive @a .&&. product [property (law_module_zero @s @a)
