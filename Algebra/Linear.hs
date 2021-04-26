@@ -57,6 +57,34 @@ instance Applicative VZero where
   VZero <*> VZero = VZero
 
 data VNext v a = VNext !(v a) !a deriving (Functor,Foldable,Traversable,Show,Eq,Ord)
+
+data V f a where
+  V0 :: V VZero a
+  (:/) :: !(V f a) -> !a -> V (VNext f) a
+
+deriving instance Functor (V f)
+deriving instance Foldable (V f)
+deriving instance Traversable (V f)
+deriving instance Show a => Show (V f a)
+deriving instance Eq a => Eq (V f a)
+
+class (Foldable f,Applicative f) => IsVec f where
+  reifyVec :: f a -> V f a
+
+instance IsVec VZero where
+  reifyVec VZero = V0
+
+instance IsVec f => IsVec (VNext f) where
+  reifyVec (VNext xs x) = reifyVec xs :/ x
+
+fromV :: V f a -> f a
+fromV V0 = VZero
+fromV (xs :/ x) = VNext (fromV xs) x
+
+instance IsVec f => Applicative (V f) where
+  pure x = reifyVec (pure x)
+  fs <*> xs = reifyVec (fromV fs <*> fromV xs)
+
 instance Applicative v => Applicative (VNext v) where
   pure x = VNext (pure x) x
   VNext fs f <*> VNext xs x = VNext (fs <*> xs) (f x)
