@@ -209,9 +209,11 @@ multDefault :: Group a => Natural -> a -> a
 multDefault n x = if n < 0 then negate (times (negate n) x) else times n x
 
 class Additive a => Group a where
-  {-# MINIMAL (negate | (-)) #-}
+  {-# MINIMAL (negate | (-) | subtract) #-}
   (-) :: a -> a -> a
   a - b = a + negate b
+  subtract :: a -> a -> a
+  subtract b a = a - b
   negate :: a -> a
   negate b = zero - b
   mult :: Integer -> a -> a
@@ -230,7 +232,6 @@ laws_group = laws_additive @a .&&. product [property (law_negate_minus @a)
 
 laws_abelian_group :: forall a. (Group a, TestEqual a) => Property
 laws_abelian_group = laws_group @a .&&. product [property (law_plus_comm @a)]
-
 
 instance Group Integer where
   (-) = (Prelude.-)
