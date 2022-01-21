@@ -57,7 +57,7 @@ instance Multiplicative a => Monoid (Product a) where
   mempty = Product one
   mappend = (<>)
 
-newtype Exponential a = Exponential {fromExponential :: a}
+newtype Exponential a = Exponential {fromExponential :: a} deriving (Show,Eq,Ord)
 
 instance Additive a => Multiplicative (Exponential a) where
   Exponential a * Exponential b = Exponential (a + b)
