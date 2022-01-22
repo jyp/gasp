@@ -1,18 +1,15 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE DeriveFunctor #-}
-module Algebra.Structure.Polynomial.Dense where
+module Algebra.Structure.Polynomial.Dense (Polynomial, fromPoly, degree, var) where
 
-import Prelude (Int, String, Eq(..), Ord(..),Show(..), Functor(..), (.), Float, Maybe(..),error)
-import Data.List (replicate,length,scanr)
+import Prelude (Int,  Eq(..), Ord(..),Show(..), Functor(..), (.),  Maybe(..),error,otherwise,Double)
 import Data.Monoid
 import Algebra.Linear
 import Algebra.Classes
-import Data.Map (Map)
-import qualified Data.Map as M
-import Control.Applicative
 import Data.Sequence as S
 
+-- Invariant: 1st element not zero.
 data Polynomial c = P {fromPoly :: S.Seq c} deriving (Functor,Show)
 
 fromCoefs :: (Additive c, Eq c) => Seq c -> Polynomial c
@@ -26,9 +23,6 @@ zipWithLonger f a b = zipWith f (S.replicate (n-S.length a) zero <> a)
 
 plus :: Additive a => Seq a -> Seq a -> Seq a
 plus = zipWithLonger (+)
-
-minus :: Group a => Seq a -> Seq a -> Seq a
-minus = zipWithLonger (-)
 
 instance (Additive a, Eq a) => Additive (Polynomial a) where
   P a + P b  = fromCoefs (zipWithLonger (+) a b)
@@ -64,19 +58,26 @@ degree (P x) = if l == 0 then Nothing else Just (l-1)
   where l = S.length x
   
 divide :: Field a => Seq a -> Seq a -> Seq a
-divide a d | S.length d == 0 = error "polynomial division by zero"
-            | S.length a < S.length d = S.Empty
-divide ana@(an :<| a) d@(dm :<| _) = q <| (S.drop 1 (ana `minus` (q *< d)) `divide` d)
-            where q = an / dm
+divide a d | S.length d == 0 = error "dense polynomial division by zero"
+           | S.length a < S.length d = Empty
+           | otherwise = divide' nsteps a (d <> S.replicate nsteps zero)
+           where nsteps = S.length a - S.length d
+
+divide' :: Field a => Int -> Seq a -> Seq a -> Seq a
+divide' n _ _ | n < 0 = S.Empty
+divide' n (an :<| ar) d@(dm :<| dr) =
+  q <| divide' (n-1) (S.zipWith (-) ar (q *< dr)) (sinit d)
+  where q = an / dm
+        sinit (x :|> _) = x
+        sinit _ = error "module Algebra.Structure.Polynomial.Dense: sinit: panic"
+divide' _ _ _ = error "module Algebra.Structure.Polynomial.Dense: divide': panic"
+
 
 instance Field a => Division (Polynomial a) where
   P q / P d = P (divide q d)
 
--- >>> (var ^+ 2 ) / var
--- <interactive>:2422:2-18: warning: [-Wtype-defaults]
---     • Defaulting the following constraints to type ‘ghc-prim-0.6.1:GHC.Types.Double’
---         (Show a0)
---           arising from a use of ‘System.IO.print’ at <interactive>:2422:2-18
---         (Field a0) arising from a use of ‘it’ at <interactive>:2422:2-18
---     • In a stmt of an interactive GHCi command: System.IO.print it
+-- >>> (var + one) * (var - one) :: Polynomial Int
+-- P {fromPoly = fromList [1,0,-1]}
+
+-- >>> (var ^+ 2 - one) / (var + one) :: Polynomial Double
 -- P {fromPoly = fromList [1.0,-1.0]}
