@@ -1,8 +1,10 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Algebra.Structure.Ratio where
 
 import Algebra.Classes
-import Prelude (Ord(..), Eq(..),Integer,Enum(..),Show(..),Ordering(..), error, otherwise, (.), Int, ($))
+import Prelude (Ord(..), Eq(..),Integer,Show(..), error, otherwise, (.), Int, ($))
 import Text.Show (showParen, showString)
+import qualified Data.Ratio
 ------------------------------------------------------------------------
 -- Divide by zero and arithmetic overflow
 ------------------------------------------------------------------------
@@ -42,15 +44,15 @@ instance  (Integral a)  => Ord (Ratio a)  where
     (x:%y) <  (x':%y')  =  x * y' <  x' * y
 
 -- | @since 2.0.1
-instance  Ring a  => Additive (Ratio a)  where
+instance  EuclideanDomain a  => Additive (Ratio a)  where
   zero = zero :% one
   (x:%y) + (x':%y')   =  reduce (x*y' + x'*y) (y*y')
 
-instance Multiplicative (Ratio a) where
+instance EuclideanDomain a => Multiplicative (Ratio a) where
   one = one :% one
   (x:%y) * (x':%y')   =  reduce (x * x') (y * y')
 
-instance Group (Ratio a) where
+instance EuclideanDomain a => Group (Ratio a) where
     (x:%y) - (x':%y')   =  reduce (x*y' - x'*y) (y*y')
     negate (x:%y)       =  (negate x) :% y
 
@@ -58,17 +60,22 @@ instance Group (Ratio a) where
     -- signum (x:%_)       =  signum x :% 1
     -- fromInteger x       =  fromInteger x :% 1
 
+instance EuclideanDomain a => AbelianAdditive (Ratio a)
+instance EuclideanDomain a => Ring (Ratio a)
+instance EuclideanDomain a => Module (Ratio a) (Ratio a) where
+  (*^) = (*)
+  
 -- | @since 2.0.1
-instance  (Integral a)  => Division (Ratio a)  where
+instance  (EuclideanDomain a)  => Division (Ratio a)  where
     {-# SPECIALIZE instance Division Rational #-}
     (x:%y) / (x':%y')   =  (x*y') % (y*x')
-    recip (0:%_)        = ratioZeroDenominatorError
-    recip (x:%y)
-        | x < 0         = negate y :% negate x
-        | otherwise     = y :% x
+    -- recip (x:%y)
+    --     | isZero x =  ratioZeroDenominatorError
+    --     | x < 0         = negate y :% negate x
+    --     | otherwise     = y :% x
 
-instance Integral a => Field (Ratio a) where
-    -- fromRational (x:%y) =  fromInteger x % fromInteger y
+instance EuclideanDomain a => Field (Ratio a) where
+    fromRational x =  fromInteger (Data.Ratio.numerator x) % fromInteger (Data.Ratio.denominator x)
 
 -- | @since 2.0.1
 -- instance  (Integral a)  => Real (Ratio a)  where
@@ -99,32 +106,20 @@ instance  (Show a)  => Show (Ratio a)  where
                            showString " % " .
                            showsPrec ratioPrec1 y
 
--- | @since 2.0.1
-instance  (Integral a)  => Enum (Ratio a)  where
-    {-# SPECIALIZE instance Enum Rational #-}
-    succ x              =  x + 1
-    pred x              =  x - 1
-
-    -- toEnum n            =  fromIntegral n :% 1
-    -- fromEnum            =  fromInteger . truncate
-
-    -- enumFrom            =  numericEnumFrom
-    -- enumFromThen        =  numericEnumFromThen
-    -- enumFromTo          =  numericEnumFromTo
-    -- enumFromThenTo      =  numericEnumFromThenTo
 
 
 -- | 'reduce' is a subsidiary function used only in this module.
 -- It normalises a ratio by dividing both numerator and denominator by
 -- their greatest common divisor.
-reduce ::  (Integral a) => a -> a -> Ratio a
+reduce ::  (EuclideanDomain a) => a -> a -> Ratio a
 {-# SPECIALISE reduce :: Integer -> Integer -> Rational #-}
-reduce _ 0              =  ratioZeroDenominatorError
-reduce x y              =  (x `quot` d) :% (y `quot` d)
-                           where d = gcd x y
+reduce x y | isZero y = ratioZeroDenominatorError
+           | otherwise = (x `quot` d) :% (y `quot` d)
+             where d = gcd x y
 
-(%) :: a -> a -> Ratio a
-x % y                   =  reduce (x * signum y) (abs y)
+(%) :: EuclideanDomain a => a -> a -> Ratio a
+x % y =  reduce (x * sign) a
+  where (a,sign) = normalize y
 
 ratioPrec, ratioPrec1 :: Int
 ratioPrec  = 7  -- Precedence of ':%' constructor

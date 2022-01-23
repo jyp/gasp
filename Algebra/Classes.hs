@@ -7,8 +7,8 @@
 module Algebra.Classes where
 
 import Prelude (Int,Integer,Float,Double, (==), Monoid(..), Ord(..), Foldable,
-                foldMap, Char,
-                 Real(..), Enum(..), snd, Rational, Functor(..), Eq(..), Bool(..), Semigroup(..), Show(..), uncurry)
+                foldMap, (||),
+                 Real(..), Enum(..), snd, Rational, Functor(..), Eq(..), Bool(..), Semigroup(..), Show(..), uncurry, otherwise)
 
 import qualified Prelude
 import qualified Data.Ratio
@@ -30,8 +30,10 @@ infixl 6 +
 infixl 7 *
 infixr 7 *^
 infixl 7 /
-infixl 7 `mod`
 infixl 7 `div`
+infixl 7 `mod`
+infixl 7 `quot`
+infixl 7 `rem`
 infixr 8 ^
 infixr 8 ^+
 
@@ -440,72 +442,73 @@ instance Field Float where
   fromRational = Prelude.fromRational
 
 
-class Ring a => EuclideanDomain a where
-    {-# MINIMAL (stdUnit | normalize) , (divMod | (div , mod)) #-}
+class (Ring a, DecidableZero a) => EuclideanDomain a where
+    {-# MINIMAL (stdUnit | normalize) , (quotRem | (quot , rem)) #-}
     stdAssociate    :: a -> a
     stdUnit         :: a -> a
     normalize       :: a -> (a, a)
 
-    div, mod        :: a -> a -> a
-    divMod          :: a -> a -> (a,a)
+    quot, rem        :: a -> a -> a
+    quotRem          :: a -> a -> (a,a)
 
-    stdAssociate x  =  x `div` stdUnit x
+    stdAssociate x  =  x `quot` stdUnit x
     stdUnit x       =  snd (normalize x)
     normalize x     =  (stdAssociate x, stdUnit x)
 
-    n `divMod` d    =  (n `div` d, n `mod` d)
-    n `div` d       =  q  where (q,_) = divMod n d
-    n `mod` d       =  r  where (_,r) = divMod n d
+    n `quotRem` d    =  (n `quot` d, n `rem` d)
+    n `quot` d       =  q  where (q,_) = quotRem n d
+    n `rem` d       =  r  where (_,r) = quotRem n d
 
+gcd             :: EuclideanDomain a => a -> a -> a
+{-# NOINLINE [1] gcd #-}
+gcd x y         =  gcd' (stdAssociate x) (stdAssociate y)
+ where
+   gcd'             :: (EuclideanDomain a) => a -> a -> a
+   gcd' a b | isZero b  =  a
+            | otherwise  =  gcd' b (a `rem` b)
+
+-- | @'lcm' x y@ is the smallest positive integer that both @x@ and @y@ divide.
+lcm :: (EuclideanDomain a) => a -> a -> a
+{-# SPECIALISE lcm :: Int -> Int -> Int #-}
+{-# NOINLINE [1] lcm #-}
+lcm x y | isZero x || isZero y = zero
+        | otherwise =  stdAssociate ((x `quot` (gcd x y)) * y)
 
 instance  EuclideanDomain Integer  where
-    div             =  Prelude.div
-    mod             =  Prelude.mod
+    quot             =  Prelude.quot
+    rem             =  Prelude.rem
     stdAssociate x  =  Prelude.abs x
     stdUnit x       =  if x < 0 then -1 else 1
 
 instance  EuclideanDomain CInt  where
-    div             =  Prelude.div
-    mod             =  Prelude.mod
+    quot             =  Prelude.quot
+    rem             =  Prelude.rem
     stdAssociate x  =  Prelude.abs x
     stdUnit x       =  if x < 0 then -1 else 1
 
 instance  EuclideanDomain Int  where
-    div             =  Prelude.div
-    mod             =  Prelude.mod
+    quot             =  Prelude.quot
+    rem             =  Prelude.rem
     stdAssociate x  =  Prelude.abs x
     stdUnit x       =  if x < 0 then -1 else 1
 
 class (Real a, Enum a, EuclideanDomain a) => Integral a  where
-    quot, rem       :: a -> a -> a
-    quotRem         :: a -> a -> (a,a)
+    div, mod       :: a -> a -> a
+    divMod         :: a -> a -> (a,a)
     toInteger       :: a -> Integer
 
-    n `quot` d      =  q  where (q,_) = quotRem n d
-    n `rem` d       =  r  where (_,r) = quotRem n d
-    quotRem n d     =  if Prelude.signum r == - Prelude.signum d then (q+one, r-d) else qr
-      where qr@(q,r) = divMod n d
+    n `div` d      =  q  where (q,_) = divMod n d
+    n `mod` d       =  r  where (_,r) = divMod n d
+    divMod n d     =  if Prelude.signum r == - Prelude.signum d then (q+one, r-d) else qr
+      where qr@(q,r) = quotRem n d
 
 instance  Integral Integer  where
-    quot      =  Prelude.quot
-    rem       =  Prelude.rem
+    div      =  Prelude.div
+    mod       =  Prelude.mod
     toInteger = Prelude.toInteger
 
-
-gcd             :: (Integral a) => a -> a -> a
-{-# NOINLINE [1] gcd #-}
-gcd x y         =  gcd' (stdAssociate x) (stdAssociate y)
- where
-   gcd'             :: (Eq a, Integral a) => a -> a -> a
-   gcd' a 0  =  a
-   gcd' a b  =  gcd' b (a `rem` b)
-
-{- -}
-
-
-
---------------------------
--- Ratio instances
+---------------------------------------
+-- Data.Ratio.Ratio instances
 instance Prelude.Integral a => Additive (Data.Ratio.Ratio a) where
   zero = Prelude.fromInteger 0
   (+) = (Prelude.+)
