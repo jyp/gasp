@@ -6,7 +6,7 @@
 {-# LANGUAGE MultiParamTypeClasses, ConstraintKinds, FlexibleContexts, FlexibleInstances, DeriveGeneric #-}
 module Algebra.Classes where
 
-import Prelude (Int,Integer,Float,Double, (==), Monoid(..), Ord(..), Foldable,
+import Prelude (Int,Integer,Float,Double, (==), Monoid(..), Ord(..), Ordering(..), Foldable,
                 foldMap, (||),
                  Real(..), Enum(..), snd, Rational, Functor(..), Eq(..), Bool(..), Semigroup(..), Show(..), uncurry, otherwise)
 
@@ -36,6 +36,9 @@ infixl 7 `quot`
 infixl 7 `rem`
 infixr 8 ^
 infixr 8 ^+
+infixr 8 ^/
+infixr 8 **
+infixr 8 ^?
 
 type Natural = Integer
 
@@ -70,8 +73,8 @@ instance Group a => Division (Exponential a) where
   recip (Exponential a) = Exponential (negate a)
   Exponential a / Exponential b = Exponential (a - b)
 
-timesDefault :: (Additive a2, Prelude.Integral a1) => a1 -> a2 -> a2
-timesDefault n0 = if n0 < 0 then Prelude.error "Algebra.Classes.times: negative number of times" else go n0
+timesDefault :: (Additive a1, Additive a2, Prelude.Integral a1) => a1 -> a2 -> a2
+timesDefault n0 = if n0 < zero then Prelude.error "Algebra.Classes.times: negative number of times" else go n0
     where go 0 _ = zero
           go n x = if r == 0 then y + y else x + y + y
             where (m,r) = n `Prelude.divMod` 2
@@ -594,16 +597,21 @@ ifThenElse True a _ = a
 ifThenElse False _ a = a
 
 
-{-
-
-Draft:
 
 class Field a => Algebraic a where
   sqrt :: a -> a
-  (^^) :: a -> Rational -> a
-  
-class Field a => Feedback a where 
-  -- trigonometric functions, and exponential arise as solution of feedback equations
+  (^/) :: a -> Rational -> a
+
+instance Algebraic Float where
+  sqrt = Prelude.sqrt
+  x ^/ y = x ** fromRational y
+
+instance Algebraic Double where
+  sqrt = Prelude.sqrt
+  x ^/ y = x ** fromRational y
+
+-- | Class providing transcendental functions
+class Algebraic a => Transcendental a where 
   pi :: a
   exp :: a -> a
   log :: a -> a
@@ -622,6 +630,112 @@ class Field a => Feedback a where
   acosh :: a -> a
   atanh :: a -> a
 
+(^?) :: Transcendental a => a -> a -> a
+(^?) = (**)
+
+instance Transcendental Double where
+  pi = Prelude.pi
+  exp = Prelude.exp
+  log = Prelude.log
+  (**) = (Prelude.**)
+  logBase = Prelude.logBase
+  sin = Prelude.sin
+  cos = Prelude.cos
+  tan = Prelude.tan
+  asin = Prelude.asin
+  acos = Prelude.acos
+  atan = Prelude.atan
+  sinh = Prelude.sinh
+  cosh = Prelude.cosh
+  tanh = Prelude.tanh
+  asinh = Prelude.asinh
+  acosh = Prelude.acosh
+  atanh = Prelude.atanh
+
+instance Transcendental Float where
+  pi = Prelude.pi
+  exp = Prelude.exp
+  log = Prelude.log
+  (**) = (Prelude.**)
+  logBase = Prelude.logBase
+  sin = Prelude.sin
+  cos = Prelude.cos
+  tan = Prelude.tan
+  asin = Prelude.asin
+  acos = Prelude.acos
+  atan = Prelude.atan
+  sinh = Prelude.sinh
+  cosh = Prelude.cosh
+  tanh = Prelude.tanh
+  asinh = Prelude.asinh
+  acosh = Prelude.acosh
+  atanh = Prelude.atanh
+
+{-
+instance (Prelude.RealFloat a, Ord a, Algebraic a) => Algebraic (Complex a) where
+    sqrt z@(x:+y)
+      | z == zero = zero
+      | otherwise 
+                     =  u :+ (if y < 0 then -v else v)
+                      where (u,v) = if x < 0 then (v',u') else (u',v')
+                            v'    = Prelude.abs y / (u'*2)
+                            u'    = sqrt ((magnitude z + Prelude.abs x) / 2)
+
+
+
+instance  (Prelude.RealFloat a, Transcendental a) => Transcendental (Complex a) where
+    {-# SPECIALISE instance Transcendental (Complex Float) #-}
+    {-# SPECIALISE instance Transcendental (Complex Double) #-}
+    pi             =  pi :+ 0
+    exp (x:+y)     =  expx * cos y :+ expx * sin y
+                      where expx = exp x
+    log z          =  log (magnitude z) :+ phase z
+
+    x ** y = case (x,y) of
+      (_ , (0:+0))  -> 1 :+ 0
+      ((0:+0), (exp_re:+_)) -> case compare exp_re 0 of
+                 GT -> 0 :+ 0
+                 LT -> inf :+ 0
+                 EQ -> nan :+ nan
+      ((re:+im), (exp_re:+_))
+        | (Prelude.isInfinite re || Prelude.isInfinite im) -> case compare exp_re 0 of
+                 GT -> inf :+ 0
+                 LT -> 0 :+ 0
+                 EQ -> nan :+ nan
+        | otherwise -> exp (log x * y)
+      where
+        inf = 1/0
+        nan = 0/0
+
+    sin (x:+y)     =  sin x * cosh y :+ cos x * sinh y
+    cos (x:+y)     =  cos x * cosh y :+ (- sin x * sinh y)
+    tan (x:+y)     =  (sinx*coshy:+cosx*sinhy)/(cosx*coshy:+(-sinx*sinhy))
+                      where sinx  = sin x
+                            cosx  = cos x
+                            sinhy = sinh y
+                            coshy = cosh y
+
+    sinh (x:+y)    =  cos y * sinh x :+ sin  y * cosh x
+    cosh (x:+y)    =  cos y * cosh x :+ sin y * sinh x
+    tanh (x:+y)    =  (cosy*sinhx:+siny*coshx)/(cosy*coshx:+siny*sinhx)
+                      where siny  = sin y
+                            cosy  = cos y
+                            sinhx = sinh x
+                            coshx = cosh x
+
+    asin z@(x:+y)  =  y':+(-x')
+                      where  (x':+y') = log (((-y):+x) + sqrt (1 - z*z))
+    acos z         =  y'':+(-x'')
+                      where (x'':+y'') = log (z + ((-y'):+x'))
+                            (x':+y')   = sqrt (1 - z*z)
+    atan z@(x:+y)  =  y':+(-x')
+                      where (x':+y') = log (((1-y):+x) / sqrt (1+z*z))
+
+    asinh z        =  log (z + sqrt (1+z*z))
+    -- Take care to allow (-1)::Complex, fixing #8532
+    acosh z        =  log (z + (sqrt (z+1)) * (sqrt (z-1)))
+    atanh z        =  0.5 * log ((1.0+z) / (1.0-z))
+-}
 
 class Field a => AlgebraicallyClosed a where
   imaginaryUnit :: a
@@ -630,4 +744,3 @@ class Field a => AlgebraicallyClosed a where
   rootOfUnity :: Integer -> Integer -> a
 
 
--}  
