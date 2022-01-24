@@ -594,22 +594,40 @@ ifThenElse True a _ = a
 ifThenElse False _ a = a
 
 
-
--- >>> times 5 (Embed "x")
--- Add (Add (Embed "x") (Add (Embed "x") (Embed "x"))) (Add (Embed "x") (Embed "x"))
-
-
--- >>> (Embed "x")
--- Zero
-
-
 {-
-Note: the following is not quite what we intuitively want, because
 
-class Field a => AlgebraicallyClosed  a where
-  sqrt :: a -> (a,a)
+Draft:
 
-AlgebraicallyClosed numbers have two square roots.
+class Field a => Algebraic a where
+  sqrt :: a -> a
+  (^^) :: a -> Rational -> a
+  
+class Field a => Feedback a where 
+  -- trigonometric functions, and exponential arise as solution of feedback equations
+  pi :: a
+  exp :: a -> a
+  log :: a -> a
+  (**) :: a -> a -> a
+  logBase :: a -> a -> a
+  sin :: a -> a
+  cos :: a -> a
+  tan :: a -> a
+  asin :: a -> a
+  acos :: a -> a
+  atan :: a -> a
+  sinh :: a -> a
+  cosh :: a -> a
+  tanh :: a -> a
+  asinh :: a -> a
+  acosh :: a -> a
+  atanh :: a -> a
 
--}
 
+class Field a => AlgebraicallyClosed a where
+  imaginaryUnit :: a
+  imaginaryUnit = rootOfUnity 2 1
+  -- | rootOfUnity n give the nth roots of unity. The 2nd argument specifies which one is demanded
+  rootOfUnity :: Integer -> Integer -> a
+
+
+-}  
