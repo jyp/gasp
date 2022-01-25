@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE DeriveFunctor #-}
-module Algebra.Structure.Polynomial.Dense (Polynomial, fromPoly, degree, var) where
+module Algebra.Morphism.Polynomial.Dense (Polynomial, fromPoly, degree, var) where
 
 import Prelude (Int,  Eq(..), Ord(..),Show(..), Functor(..), (.),  Maybe(..),error,otherwise,Double)
 import Data.Monoid

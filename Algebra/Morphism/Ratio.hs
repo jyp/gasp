@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-module Algebra.Structure.Ratio where
+module Algebra.Morphism.Ratio where
 
 import Algebra.Classes
 import Prelude (Ord(..), Eq(..),Integer,Show(..), error, otherwise, (.), Int, ($))

@@ -3,7 +3,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Algebra.Structure.Polynomial.Multi where
+module Algebra.Morphism.Polynomial.Multi where
 
 import Prelude (Int, String, Eq(..), Ord(..),Show(..), Functor(..), (.), Float)
 import Data.List (intercalate)
