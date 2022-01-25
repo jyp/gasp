@@ -510,6 +510,11 @@ instance  Integral Integer  where
     mod       =  Prelude.mod
     toInteger = Prelude.toInteger
 
+instance  Integral Int  where
+    div      =  Prelude.div
+    mod       =  Prelude.mod
+    toInteger = Prelude.toInteger
+
 ---------------------------------------
 -- Data.Ratio.Ratio instances
 instance Prelude.Integral a => Additive (Data.Ratio.Ratio a) where
@@ -602,7 +607,7 @@ class Field a => Algebraic a where
   {-# MINIMAL root | (^/) #-}
   sqrt :: a -> a
   sqrt = root 2
-  -- sqrt x  =  x ** (1/2)
+  {-# INLINE sqrt #-}
 
   root :: Integer -> a -> a
   root n x = x ^/ (1 Data.Ratio.% n)
@@ -620,23 +625,71 @@ instance Algebraic Double where
 
 -- | Class providing transcendental functions
 class Algebraic a => Transcendental a where 
-  pi :: a
-  exp :: a -> a
-  log :: a -> a
-  (**) :: a -> a -> a
-  logBase :: a -> a -> a
-  sin :: a -> a
-  cos :: a -> a
-  tan :: a -> a
-  asin :: a -> a
-  acos :: a -> a
-  atan :: a -> a
-  sinh :: a -> a
-  cosh :: a -> a
-  tanh :: a -> a
-  asinh :: a -> a
-  acosh :: a -> a
-  atanh :: a -> a
+    pi                  :: a
+    exp, log            :: a -> a
+    (**), logBase       :: a -> a -> a
+    sin, cos, tan       :: a -> a
+    asin, acos, atan    :: a -> a
+    sinh, cosh, tanh    :: a -> a
+    asinh, acosh, atanh :: a -> a
+
+    -- | @'log1p' x@ computes @'log' (1 + x)@, but provides more precise
+    -- results for small (absolute) values of @x@ if possible.
+    --
+    -- @since 4.9.0.0
+    log1p               :: a -> a
+
+    -- | @'expm1' x@ computes @'exp' x - 1@, but provides more precise
+    -- results for small (absolute) values of @x@ if possible.
+    --
+    -- @since 4.9.0.0
+    expm1               :: a -> a
+
+    -- | @'log1pexp' x@ computes @'log' (1 + 'exp' x)@, but provides more
+    -- precise results if possible.
+    --
+    -- Examples:
+    --
+    -- * if @x@ is a large negative number, @'log' (1 + 'exp' x)@ will be
+    --   imprecise for the reasons given in 'log1p'.
+    --
+    -- * if @'exp' x@ is close to @-1@, @'log' (1 + 'exp' x)@ will be
+    --   imprecise for the reasons given in 'expm1'.
+    --
+    -- @since 4.9.0.0
+    log1pexp            :: a -> a
+
+    -- | @'log1mexp' x@ computes @'log' (1 - 'exp' x)@, but provides more
+    -- precise results if possible.
+    --
+    -- Examples:
+    --
+    -- * if @x@ is a large negative number, @'log' (1 - 'exp' x)@ will be
+    --   imprecise for the reasons given in 'log1p'.
+    --
+    -- * if @'exp' x@ is close to @1@, @'log' (1 - 'exp' x)@ will be
+    --   imprecise for the reasons given in 'expm1'.
+    --
+    -- @since 4.9.0.0
+    log1mexp            :: a -> a
+
+    {-# INLINE (**) #-}
+    {-# INLINE logBase #-}
+    {-# INLINE tan #-}
+    {-# INLINE tanh #-}
+    x ** y              =  exp (log x * y)
+    logBase x y         =  log y / log x
+    tan  x              =  sin  x / cos  x
+    tanh x              =  sinh x / cosh x
+
+    {-# INLINE log1p #-}
+    {-# INLINE expm1 #-}
+    {-# INLINE log1pexp #-}
+    {-# INLINE log1mexp #-}
+    log1p x = log (one + x)
+    expm1 x = exp x - one
+    log1pexp x = log1p (exp x)
+    log1mexp x = log1p (negate (exp x))
 
 (^?) :: Transcendental a => a -> a -> a
 (^?) = (**)
@@ -679,8 +732,11 @@ instance Transcendental Float where
   acosh = Prelude.acosh
   atanh = Prelude.atanh
 
-{-
+
+
 instance (Prelude.RealFloat a, Ord a, Algebraic a) => Algebraic (Complex a) where
+    root n x = mkPolar (root n ρ) (θ / fromInteger n)
+      where (ρ,θ) = polar x
     sqrt z@(x:+y)
       | z == zero = zero
       | otherwise 
@@ -743,7 +799,7 @@ instance  (Prelude.RealFloat a, Transcendental a) => Transcendental (Complex a) 
     -- Take care to allow (-1)::Complex, fixing #8532
     acosh z        =  log (z + (sqrt (z+1)) * (sqrt (z-1)))
     atanh z        =  0.5 * log ((1.0+z) / (1.0-z))
--}
+
 
 class Field a => AlgebraicallyClosed a where
   imaginaryUnit :: a
