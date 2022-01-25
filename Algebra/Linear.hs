@@ -26,7 +26,7 @@
 module Algebra.Linear where
 
 import Algebra.Classes hiding ((*<))
-import Prelude (cos,sin,Floating(..),Functor(..),Show(..),Eq(..),Int,fst,($),Ord,Double)
+import Prelude (Functor(..),Show(..),Eq(..),Int,fst,($),Ord,Double)
 import Control.Applicative
 import Data.Foldable hiding (sum,product)
 import Data.Traversable
@@ -154,10 +154,10 @@ instance (VectorR f) => InnerProdSpace (Euclid f) where
 sqNorm :: Field s => InnerProdSpace v => v s -> s
 sqNorm x = inner x x
 
-norm :: Field s => InnerProdSpace v => Floating s => v s  -> s
+norm :: Algebraic s => InnerProdSpace v => v s  -> s
 norm = sqrt . sqNorm
 
-normalize :: (VectorSpace s (v s)) => Floating s => InnerProdSpace v => v s -> v s
+normalize :: (VectorSpace s (v s)) => Algebraic s => InnerProdSpace v => v s -> v s
 normalize v = recip (norm v) *^ v
 
 -- | Cross product in 3 dimensions https://en.wikipedia.org/wiki/Cross_product
@@ -214,7 +214,7 @@ u <+> v = (+) <$> u <*> v
 matVecMul :: forall s v w. (Ring s, Foldable v,Applicative v,Applicative w) => Mat s v w -> v s -> w s
 matVecMul (Mat m) x = foldr (<+>) (pure zero) ((*<) <$> x <*> m) -- If GHC gets fixed: use VectorR constraint instead of Applicative, and add instead of foldr.
 
-rotation2d :: (Group a,Floating a) => a -> Mat2x2 a
+rotation2d :: Transcendental a => a -> Mat2x2 a
 rotation2d θ = transpose $ Mat $ V2 (V2 (cos θ) (-sin θ))
                                     (V2 (sin θ)  (cos θ))
 
@@ -242,13 +242,13 @@ diagonal :: Traversable v => Ring s => Applicative v => v s -> SqMat v s
 diagonal v = tensorWith (\x (y,a) -> if x == y then a else zero) index ((,) <$> index <*> v)
 
 -- | 3d rotation around given axis
-rotation3d :: Ring a => Floating a => a -> V3 a -> Mat3x3 a
+rotation3d :: Transcendental a => a -> V3 a -> Mat3x3 a
 rotation3d θ u = cos θ *^ identity +
                  sin θ *^ crossProductMatrix u +
                  (1 - cos θ) *^ (u ⊗ u)
 
 -- | 3d rotation mapping the direction of 'from' to that of 'to'
-rotationFromTo :: (Floating a, Module a a,Field a)
+rotationFromTo :: (Algebraic a)
                => V3 a -> V3 a -> Mat3x3 a
 rotationFromTo from to = c *^ identity + s *^ crossProductMatrix v + (1-c) *^ (v ⊗ v)
   where y = to
