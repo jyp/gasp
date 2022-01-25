@@ -21,7 +21,7 @@ import Control.Applicative
 newtype Monomial e = M (Exponential (Map e Int)) deriving (Multiplicative,Division,Ord,Eq)
 
 -- | Map each monomial to its coefficient
-newtype Polynomial e c = P (Map (Monomial e) c) deriving (Additive,Group,AbelianAdditive,Functor)
+newtype Polynomial e c = P (Map (Monomial e) c) deriving (Additive,Group,AbelianAdditive,Functor,Ord,Eq)
 
 instance (Eq c, Ord c,Ring c, Ord e) => Multiplicative (Polynomial e c) where
   one = P (M.singleton one one)
@@ -37,22 +37,6 @@ instance (Eq c, Ord c,Ring c, Ord e) => Module c (Polynomial e c) where
 
 prodMonoPoly :: (Ord e) => Monomial e -> Polynomial e c -> Polynomial e c
 prodMonoPoly m (P p) = P (M.mapKeys (* m) p)
-
-showExp :: Int -> String
-showExp n  = c <$> show n
-  where
-    c '0' = '⁰'
-    c '1' = '¹'
-    c '2' = '²'
-    c '3' = '³'
-    c '4' = '⁴'
-    c '5' = '⁵'
-    c '6' = '⁶'
-    c '7' = '⁷'
-    c '8' = '⁸'
-    c '9' = '⁹'
-    c x = x
-
   
 instance Show e => Show (Monomial e) where
   show (M (Exponential xs)) = mconcat ([show m <> (if coef /= 1 then ("^" <> show coef) else mempty)| (m,coef) <- M.toList xs]) 
@@ -67,7 +51,7 @@ varM x = M (Exponential (M.singleton x one))
 -- "x"^3"y"
 
 varP :: Multiplicative c => e -> Polynomial e c
-varP x = P (M.singleton (varM x) one)
+varP x = monoPoly (varM x)
 
 -- >>> varP "x" + varP "y"
 -- 1"x"+1"y"
@@ -78,12 +62,14 @@ varP x = P (M.singleton (varM x) one)
 -- >>> ((varP "x" ^+ 2) * varP "y" + varP "y") * ((varP "x" ^+ 2) * varP "y" + varP "y")
 -- 2"x"^2"y"^2+"x"^4"y"^2+"y"^2
 
+monoPoly :: Multiplicative c => Monomial e -> Polynomial e c
+monoPoly m = P (M.singleton m one)
 
 type Substitution e f c = e -> Polynomial f c
 
 substMono :: Ord f => Ord e => Ord c => Ring c => Substitution e f c -> Monomial e -> Polynomial f c
 substMono f (M (Exponential m)) = product [ f v ^+ fromIntegral e | (v, e) <- M.assocs m ]
 
-substPoly :: Ord f => Ord e => Ord c => Ring c => Substitution e f c -> Polynomial e c -> Polynomial f c
-substPoly f (P p) = sum [ c *^ substMono f m | (m, c) <- M.assocs p ]
+subst :: Ord f => Ord e => Ord c => Ring c => Substitution e f c -> Polynomial e c -> Polynomial f c
+subst f (P p) = sum [ c *^ substMono f m | (m, c) <- M.assocs p ]
 

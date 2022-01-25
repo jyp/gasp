@@ -772,7 +772,7 @@ instance  (Prelude.RealFloat a, Transcendental a) => Transcendental (Complex a) 
     atanh z        =  0.5 * log ((1.0+z) / (1.0-z))
 
 
-class Field a => AlgebraicallyClosed a where
+class Algebraic a => AlgebraicallyClosed a where
   imaginaryUnit :: a
   imaginaryUnit = rootOfUnity 2 1
   -- | rootOfUnity n give the nth roots of unity. The 2nd argument specifies which one is demanded
