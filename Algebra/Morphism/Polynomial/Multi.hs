@@ -5,11 +5,12 @@
 
 module Algebra.Morphism.Polynomial.Multi where
 
-import Prelude (Int, String, Eq(..), Ord(..),Show(..), Functor(..), (.),fromIntegral)
+import Prelude (Int, String, Eq(..), Ord(..),Show(..), Functor(..), fromIntegral)
 import Data.List (intercalate)
 import Data.Monoid
 import Algebra.Linear
 import Algebra.Classes
+import Algebra.Morphism.Exponential
 import Data.Map (Map)
 import qualified Data.Map as M
 import Control.Applicative
