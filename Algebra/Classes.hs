@@ -42,36 +42,7 @@ infixr 8 ^?
 
 type Natural = Integer
 
-newtype Sum a = Sum {fromSum :: a} deriving Generic
 
-instance Binary a => Binary (Sum a)
-
-instance Additive a => Monoid (Sum a) where
-  mempty = Sum zero
-  mappend = (<>)
-
-instance Additive a => Semigroup (Sum a) where
-  (<>) (Sum x) (Sum y) = Sum (x + y)
-
-newtype Product a = Product {fromProduct :: a}
-
-instance Multiplicative a => Semigroup (Product a) where
-  (<>) (Product x) (Product y) = Product (x * y)
-
-instance Multiplicative a => Monoid (Product a) where
-  mempty = Product one
-  mappend = (<>)
-
-newtype Exponential a = Exponential {fromExponential :: a} deriving (Show,Eq,Ord)
-
-instance Additive a => Multiplicative (Exponential a) where
-  Exponential a * Exponential b = Exponential (a + b)
-  one = Exponential zero
-  Exponential a ^+ n = Exponential (times n a)
-
-instance Group a => Division (Exponential a) where
-  recip (Exponential a) = Exponential (negate a)
-  Exponential a / Exponential b = Exponential (a - b)
 
 timesDefault :: (Additive a1, Additive a2, Prelude.Integral a1) => a1 -> a2 -> a2
 timesDefault n0 = if n0 < zero then Prelude.error "Algebra.Classes.times: negative number of times" else go n0
@@ -602,8 +573,7 @@ ifThenElse True a _ = a
 ifThenElse False _ a = a
 
 
-
-class Field a => Algebraic a where
+class Multiplicative a => Roots a where
   {-# MINIMAL root | (^/) #-}
   sqrt :: a -> a
   sqrt = root 2
@@ -615,11 +585,13 @@ class Field a => Algebraic a where
   (^/) :: a -> Rational -> a
   x ^/ y = root (Data.Ratio.denominator y) (x ^+ negate (Data.Ratio.numerator y))
 
-instance Algebraic Float where
+type Algebraic a = (Roots a, Field a)
+
+instance Roots Float where
   sqrt = Prelude.sqrt
   x ^/ y = x ** fromRational y
 
-instance Algebraic Double where
+instance Roots Double where
   sqrt = Prelude.sqrt
   x ^/ y = x ** fromRational y
 
@@ -734,7 +706,7 @@ instance Transcendental Float where
 
 
 
-instance (Prelude.RealFloat a, Ord a, Algebraic a) => Algebraic (Complex a) where
+instance (Prelude.RealFloat a, Ord a, Algebraic a) => Roots (Complex a) where
     root n x = mkPolar (root n ρ) (θ / fromInteger n)
       where (ρ,θ) = polar x
     sqrt z@(x:+y)
