@@ -28,7 +28,6 @@ library
        Algebra.Classes
        Algebra.Linear
        Algebra.Category
-       Algebra.Morphism.Monoids
        Algebra.Morphism.Exponential
        Algebra.Morphism.Ratio
        Algebra.Morphism.Polynomial.Dense

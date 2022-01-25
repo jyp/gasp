@@ -90,7 +90,6 @@ laws_additive = product [property (law_zero_plus @a)
 
 instance TestEqual Int where (=.=) = (===)
 
-
 sum :: (Foldable t, Additive a) => t a -> a
 sum xs = fromSum (foldMap Sum xs)
 
@@ -779,4 +778,27 @@ class Field a => AlgebraicallyClosed a where
   -- | rootOfUnity n give the nth roots of unity. The 2nd argument specifies which one is demanded
   rootOfUnity :: Integer -> Integer -> a
 
+----------------
+-- The following should go in Morphism.Monoids but sum/product depend on it.
+
+newtype Sum a = Sum {fromSum :: a} deriving (Generic,Ord,Eq,Show)
+
+instance Binary a => Binary (Sum a)
+
+instance Additive a => Monoid (Sum a) where
+  mempty = Sum zero
+  mappend = (<>)
+
+instance Additive a => Semigroup (Sum a) where
+  (<>) (Sum x) (Sum y) = Sum (x + y)
+
+
+newtype Product a = Product {fromProduct :: a} deriving (Generic,Ord,Eq,Show)
+
+instance Multiplicative a => Semigroup (Product a) where
+  (<>) (Product x) (Product y) = Product (x * y)
+
+instance Multiplicative a => Monoid (Product a) where
+  mempty = Product one
+  mappend = (<>)
 
