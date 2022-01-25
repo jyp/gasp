@@ -5,7 +5,7 @@
 
 module Algebra.Morphism.Polynomial.Multi where
 
-import Prelude (Int, String, Eq(..), Ord(..),Show(..), Functor(..), (.), Float)
+import Prelude (Int, String, Eq(..), Ord(..),Show(..), Functor(..), (.),fromIntegral)
 import Data.List (intercalate)
 import Data.Monoid
 import Algebra.Linear
@@ -13,6 +13,7 @@ import Algebra.Classes
 import Data.Map (Map)
 import qualified Data.Map as M
 import Control.Applicative
+
 
 -- | Monomial over an element set e, mapping each element to its
 -- exponent
@@ -75,3 +76,13 @@ varP x = P (M.singleton (varM x) one)
 
 -- >>> ((varP "x" ^+ 2) * varP "y" + varP "y") * ((varP "x" ^+ 2) * varP "y" + varP "y")
 -- 2"x"^2"y"^2+"x"^4"y"^2+"y"^2
+
+
+type Substitution e f c = e -> Polynomial f c
+
+substMono :: Ord f => Ord e => Ord c => Ring c => Substitution e f c -> Monomial e -> Polynomial f c
+substMono f (M (Exponential m)) = product [ f v ^+ fromIntegral e | (v, e) <- M.assocs m ]
+
+substPoly :: Ord f => Ord e => Ord c => Ring c => Substitution e f c -> Polynomial e c -> Polynomial f c
+substPoly f (P p) = sum [ c *^ substMono f m | (m, c) <- M.assocs p ]
+
