@@ -599,8 +599,16 @@ ifThenElse False _ a = a
 
 
 class Field a => Algebraic a where
+  {-# MINIMAL root | (^/) #-}
   sqrt :: a -> a
+  sqrt = root 2
+  -- sqrt x  =  x ** (1/2)
+
+  root :: Integer -> a -> a
+  root n x = x ^/ (1 Data.Ratio.% n)
+
   (^/) :: a -> Rational -> a
+  x ^/ y = root (Data.Ratio.denominator y) (x ^+ negate (Data.Ratio.numerator y))
 
 instance Algebraic Float where
   sqrt = Prelude.sqrt
