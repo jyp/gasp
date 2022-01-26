@@ -44,3 +44,7 @@ instance (DecidableZero c, Ord e) => DecidableZero (LinComb e c) where
 
 instance (Show c, Show e, Eq c, Multiplicative c) => Show (LinComb e c) where
   show (LC xs) = intercalate "+" ([(if coef /= one then show coef else mempty) <> show m  | (m,coef) <- M.toList xs])
+
+-- | Substitution by evaluation
+subst :: Additive c => Scalable c c => Ord v => (x -> LinComb v c) -> LinComb x c -> LinComb v c
+subst f = eval id f
