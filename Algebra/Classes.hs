@@ -7,7 +7,7 @@
 module Algebra.Classes where
 
 import Prelude (Int,Integer,Float,Double, (==), Monoid(..), Ord(..), Ordering(..), Foldable,
-                foldMap, (||),
+                foldMap, (||), (&&),
                  Real(..), Enum(..), snd, Rational, Functor(..), Eq(..), Bool(..), Semigroup(..), Show(..), uncurry, otherwise)
 
 import qualified Prelude
@@ -163,6 +163,8 @@ instance DecidableZero Float where
   isZero = (== 0)
 instance (Ord k,DecidableZero v) => DecidableZero (Map k v) where
   isZero = Prelude.all isZero
+instance DecidableZero x => DecidableZero (Complex x) where
+  isZero (x :+ y) = isZero x && isZero y
 
 class Additive a => AbelianAdditive a
   -- just a law.
@@ -246,9 +248,13 @@ instance (Ord k,Group v) => Group (Map k v) where
   -- because if a key is not present on the lhs. then the rhs won't be negated.
   negate = fmap negate
 
--- | Module
-class (AbelianAdditive a, PreRing scalar) => Module scalar a where
+
+class Scalable scalar a where
   (*^) :: scalar -> a -> a
+
+type SemiModule s a = (AbelianAdditive a, SemiRing s, Scalable s a)
+
+type Module s a = (SemiModule s a, Group s, Group a)
 
 law_module_zero :: forall s a. (Module s a, TestEqual a) => s -> Property
 law_module_zero s = nameLaw "module/zero" (s *^ zero =.= zero @a)
@@ -280,22 +286,22 @@ instance (Ord x, Show x, Arbitrary x,TestEqual a,Additive a) => TestEqual (Map x
           collapse (a,_) (_,b) = (a,b)
 
 
-instance Module Integer Integer where
+instance Scalable Integer Integer where
   (*^) = (*)
 
-instance Module Int Int where
+instance Scalable Int Int where
   (*^) = (*)
 
-instance Module CInt CInt where
+instance Scalable CInt CInt where
   (*^) = (*)
 
-instance Module Double Double where
+instance Scalable Double Double where
   (*^) = (*)
 
-instance Module Float Float where
+instance Scalable Float Float where
   (*^) = (*)
 
-instance (Ord k, Module a b) => Module a (Map k b) where
+instance (Ord k, Scalable a b) => Scalable a (Map k b) where
   s *^ m = fmap (s *^) m
 
 -- | Multiplicative monoid
@@ -506,7 +512,7 @@ instance Prelude.Integral a => Division (Data.Ratio.Ratio a) where
   recip = Prelude.recip
   (/) = (Prelude./)
   (^) = (Prelude.^^)
-instance Prelude.Integral a => Module (Data.Ratio.Ratio a) (Data.Ratio.Ratio a) where
+instance Prelude.Integral a => Scalable (Data.Ratio.Ratio a) (Data.Ratio.Ratio a) where
   (*^) = (*)
 instance Prelude.Integral a => Ring (Data.Ratio.Ratio a) where
   fromInteger = Prelude.fromInteger
@@ -516,7 +522,7 @@ instance Prelude.Integral a => Field (Data.Ratio.Ratio a) where
 
 ----------------------
 -- Complex instances
-instance Module Rational Double where
+instance Scalable Rational Double where
     r *^ d = fromRational r * d
 instance Additive a => Additive (Complex a) where
     (x:+y) + (x':+y')   =  (x+x') :+ (y+y')
@@ -528,9 +534,9 @@ instance Group a => Group  (Complex a) where
     (x:+y) - (x':+y')   =  (x-x') :+ (y-y')
     negate (x:+y)       =  negate x :+ negate y
 instance AbelianAdditive a => AbelianAdditive (Complex a)
-instance Ring a => Module (Complex a) (Complex a) where
+instance Ring a => Scalable (Complex a) (Complex a) where
   (*^) = (*)
-instance Ring a => Module a (Complex a) where
+instance Ring a => Scalable a (Complex a) where
   s *^ (x :+ y) =  (s *^ x :+ s *^ y)
 instance Ring a => Ring (Complex a) where
     fromInteger n  =  fromInteger n :+ zero

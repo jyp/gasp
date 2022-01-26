@@ -62,7 +62,7 @@ instance EuclideanDomain a => Group (Ratio a) where
 
 instance EuclideanDomain a => AbelianAdditive (Ratio a)
 instance EuclideanDomain a => Ring (Ratio a)
-instance EuclideanDomain a => Module (Ratio a) (Ratio a) where
+instance EuclideanDomain a => Scalable (Ratio a) (Ratio a) where
   (*^) = (*)
   
 -- | @since 2.0.1

@@ -49,7 +49,7 @@ mul (a :|> a0) bb0@(b :|> b0) = ((a0 *< b) `plus` (bb0 `mul` a)) |> (a0*b0)
 var :: Ring a => Polynomial a
 var = P (S.fromList [one,zero])
 
-instance (Ring a, Eq a) => Module (Polynomial a) (Polynomial a) where
+instance (Ring a, Eq a) => Scalable (Polynomial a) (Polynomial a) where
   (*^) = (*)
 instance (Ring a, Eq a) => Ring (Polynomial a)
   

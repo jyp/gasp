@@ -123,7 +123,7 @@ instance (Applicative f,Group a) => Group (Euclid f a) where
   negate x = negate <$> x
   x - y = (-) <$> x <*> y
 
-instance (Applicative f,Module s a) => Module s (Euclid f a) where
+instance (Applicative f,Scalable s a) => Scalable s (Euclid f a) where
   s *^ t = (s*^) <$> t
 
 pureMat :: (Applicative v, Applicative w) => s -> Mat s v w
@@ -137,7 +137,7 @@ instance (Applicative f,Applicative g,Group a) => Group (Mat a f g) where
   negate x = matFlat (negate <$> flatMat x)
   x - y = matFlat ((-) <$> flatMat x <*> flatMat y)
 
-instance (Applicative f, Applicative g,Module s a) => Module s (Mat a f g) where
+instance (Applicative f, Applicative g,Scalable s a) => Scalable s (Mat a f g) where
   s *^ Mat t = Mat (((s*^) <$>) <$> t)
 
 
