@@ -7,8 +7,7 @@
 
 module Algebra.Morphism.Exponential where
 
-import Prelude (Show,Eq,Ord)
-
+import Prelude (Show,Eq,Ord,Integer)
 import Algebra.Classes
 
 newtype Exponential a = Exponential {fromExponential :: a} deriving (Show,Eq,Ord)
@@ -24,4 +23,22 @@ instance Group a => Division (Exponential a) where
 
 instance Field a => Roots (Exponential a) where
   root n (Exponential x) = Exponential (x / fromInteger n)
+
+
+newtype Logarithm a = Logarithm {fromLogarithm :: a} deriving (Show,Eq,Ord)
+
+instance Multiplicative a => Additive (Logarithm a) where
+  Logarithm a + Logarithm b = Logarithm (a * b)
+  zero = Logarithm one
+  times n (Logarithm a) = Logarithm (a ^+ n)
+
+instance Multiplicative a => Scalable Integer (Logarithm a) where
+  n *^ Logarithm x = Logarithm (x ^+ n)
+  
+instance Division a => Group (Logarithm a) where
+  negate (Logarithm a) = Logarithm (recip a)
+  Logarithm a - Logarithm b = Logarithm (a / b)
+
+-- instance Roots a => Field (Logarithm a) where
+-- fromRational x = Logarithm (root (denominator x) (fromInteger (numerator x)))
 
