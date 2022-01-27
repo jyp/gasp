@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -12,6 +13,8 @@ import Algebra.Classes
 import qualified Data.Map as M
 import Data.Function (on)
 import Data.Monoid
+import Control.Applicative
+import Data.Traversable
 
 newtype LinComb x c = LinComb {fromLinComb :: M.Map x c}  deriving (Additive,Functor,AbelianAdditive,Group)
 
@@ -47,3 +50,6 @@ instance (Show c, Show e, Eq c, Multiplicative c) => Show (LinComb e c) where
 -- | Substitution by evaluation
 subst :: Additive c => Scalable c c => Ord v => (x -> LinComb v c) -> LinComb x c -> LinComb v c
 subst f = eval id f
+
+traverseVars :: Applicative f => Ord x => Additive c => (v -> f x) -> LinComb v c -> f (LinComb x c)
+traverseVars f e = fromList <$> traverse (\(x,c) -> (,c) <$> f x) (toList e)
