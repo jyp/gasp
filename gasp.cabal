@@ -25,11 +25,13 @@ library
   build-depends: QuickCheck
 
   exposed-modules:
+       Algebra.Category
        Algebra.Classes
        Algebra.Linear
-       Algebra.Category
+       Algebra.Morphism.Affine
        Algebra.Morphism.Exponential
-       Algebra.Morphism.Ratio
+       Algebra.Morphism.LinComb
        Algebra.Morphism.Polynomial.Dense
        Algebra.Morphism.Polynomial.Multi
+       Algebra.Morphism.Ratio
 
