@@ -310,7 +310,7 @@ class Multiplicative a where
   one :: a
   (^+) :: a -> Natural -> a
 
-  x0 ^+ n0 = if n0 < 0 then Prelude.error "Algebra.Classes.^: negative exponent" else go x0 n0
+  x0 ^+ n0 = if n0 < 0 then Prelude.error "Algebra.Classes.^+: negative exponent" else go x0 n0
     where go _ 0 = one
           go x n = if r == 0 then y * y else x * y * y
             where (m,r) = n `Prelude.divMod` 2
@@ -578,7 +578,7 @@ ifThenElse True a _ = a
 ifThenElse False _ a = a
 
 
-class Multiplicative a => Roots a where
+class Division a => Roots a where
   {-# MINIMAL root | (^/) #-}
   sqrt :: a -> a
   sqrt = root 2
@@ -588,7 +588,7 @@ class Multiplicative a => Roots a where
   root n x = x ^/ (1 Data.Ratio.% n)
 
   (^/) :: a -> Rational -> a
-  x ^/ y = root (Data.Ratio.denominator y) (x ^+ negate (Data.Ratio.numerator y))
+  x ^/ y = root (Data.Ratio.denominator y) (x ^ Data.Ratio.numerator y)
 
 type Algebraic a = (Roots a, Field a)
 
