@@ -23,6 +23,9 @@ newtype Monomial e = M (Exponential (LinComb e Int)) deriving (Multiplicative,Di
 mapMonoVars :: Ord e => (t -> e) -> Monomial t -> Monomial e
 mapMonoVars f (M (Exponential m)) = M (Exponential (LC.mapVars f m)) 
 
+mapVars  :: Ord e => (t -> e) -> Polynomial t c -> Polynomial e c
+mapVars f = P . LC.mapVars (mapMonoVars f) . fromPoly
+
 -- | Map each monomial to its coefficient
 newtype Polynomial e c = P {fromPoly :: LC.LinComb (Monomial e) c}
   deriving (Additive,Group,AbelianAdditive,Functor,Eq,Ord,DecidableZero,Show)
