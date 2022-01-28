@@ -27,7 +27,7 @@ mapMonoVars f (M (Exponential m)) = M (Exponential (LC.mapVars f m))
 newtype Polynomial e c = P {fromPoly :: LC.LinComb (Monomial e) c}
   deriving (Additive,Group,AbelianAdditive,Functor,Eq,Ord,DecidableZero,Show)
 
-instance (Ring c, Ord e) => Multiplicative (Polynomial e c) where
+instance (Ring c, DecidableZero c, Ord e) => Multiplicative (Polynomial e c) where
   one = P (LC.var one)
   P p * P q = P (LC.fromList [(m1 * m2, coef1 * coef2) | (m1,coef1) <- LC.toList p, (m2,coef2) <- LC.toList q])
 
@@ -35,10 +35,10 @@ isConstant :: (Eq c, Ord e, Additive c) => Polynomial e c -> Maybe c
 isConstant (P p) = if and [m == one || c == zero | (m,c) <- LC.toList p] then
                      Just (M.findWithDefault zero one (fromLinComb p)) else Nothing
 
-instance (Ring c, Ord e) => Scalable (Polynomial e c) (Polynomial e c) where
+instance (DecidableZero c, Ring c, Ord e) => Scalable (Polynomial e c) (Polynomial e c) where
   (*^) = (*)
 
-instance (Ring c,Ord e) => Ring (Polynomial e c) where
+instance (DecidableZero c,Ring c,Ord e) => Ring (Polynomial e c) where
   fromInteger = constPoly . fromInteger
 
 deriving instance (Ord x, Scalable c c) => Scalable c (Polynomial x c)
@@ -77,7 +77,7 @@ varP x = monoPoly (varM x)
 monoPoly :: Multiplicative c => Monomial e -> Polynomial e c
 monoPoly m = P (LC.var m)
 
-constPoly :: Additive c => Ord e => c -> Polynomial e c
+constPoly :: DecidableZero c => Additive c => Ord e => c -> Polynomial e c
 constPoly c = P (LC.fromList [(one,c)])
 
 
@@ -98,8 +98,8 @@ eval fc fe (P p) = LC.eval fc (evalMono fe) p
 
 type Substitution e f c = e -> Polynomial f c
 
-substMono :: Ord f => Ring c => Substitution e f c -> Monomial e -> Polynomial f c
+substMono :: DecidableZero c => Ord f => Ring c => Substitution e f c -> Monomial e -> Polynomial f c
 substMono = evalMono
 
-subst :: Ord f => Ord e => Ring c => Substitution e f c -> Polynomial e c -> Polynomial f c
+subst :: DecidableZero c => Ord f => Ord e => Ring c => Substitution e f c -> Polynomial e c -> Polynomial f c
 subst = eval'
