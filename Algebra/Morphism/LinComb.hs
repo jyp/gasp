@@ -18,7 +18,7 @@ import Data.Traversable
 
 -- | Normalised linear combinations as maps from variables to
 -- coefficients (zero coefficient never present in the map)
-newtype LinComb x c = LinComb {fromLinComb :: M.Map x c}  deriving (Functor,AbelianAdditive,Group,Eq,Ord)
+newtype LinComb x c = LinComb {fromLinComb :: M.Map x c}  deriving (Functor,AbelianAdditive,Group,Eq,Ord,Show)
 
 deriving instance (Ord x, Scalable c c) => Scalable c (LinComb x c)
 
@@ -54,8 +54,8 @@ fromList = normalise . LinComb . M.fromListWith (+)
 instance (Eq c, DecidableZero c, Ord e) => DecidableZero (LinComb e c) where
   isZero (LinComb p) = all isZero (M.elems p) 
 
-instance (Show c, Show e, Eq c, Multiplicative c) => Show (LinComb e c) where
-  show (LinComb xs) = intercalate "+" ([(if coef /= one then show coef else mempty) <> show m  | (m,coef) <- M.toList xs])
+-- instance (Show c, Show e, Eq c, Multiplicative c) => Show (LinComb e c) where
+--   show (LinComb xs) = intercalate "+" ([(if coef /= one then show coef else mempty) <> show m  | (m,coef) <- M.toList xs])
 
 -- | Substitution by evaluation
 subst :: DecidableZero c => Additive c => Scalable c c => Ord v => (x -> LinComb v c) -> LinComb x c -> LinComb v c

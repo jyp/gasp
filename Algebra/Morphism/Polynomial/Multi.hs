@@ -18,7 +18,7 @@ import Data.Maybe (Maybe (..))
 
 -- | Monomial over an element set e, mapping each element to its
 -- exponent
-newtype Monomial e = M (Exponential (LinComb e Int)) deriving (Multiplicative,Division,Ord,Eq)
+newtype Monomial e = M (Exponential (LinComb e Int)) deriving (Multiplicative,Division,Ord,Eq,Show)
 
 mapMonoVars :: Ord e => (t -> e) -> Monomial t -> Monomial e
 mapMonoVars f (M (Exponential m)) = M (Exponential (LC.mapVars f m)) 
@@ -53,8 +53,8 @@ prodMonoPoly m (P p) = P (LC.mapVars (* m) p)
 -- instance (Eq c, Ord c,Ring c, Ord e) => Scalable (Monomial e) (Polynomial e c) where
 --   (*^) = prodMonoPoly
   
-instance Show e => Show (Monomial e) where
-  show (M (Exponential xs)) = mconcat ([show m <> (if coef /= 1 then ("^" <> show coef) else mempty)| (m,coef) <- LC.toList xs]) 
+-- instance Show e => Show (Monomial e) where
+--   show (M (Exponential xs)) = mconcat ([show m <> (if coef /= 1 then ("^" <> show coef) else mempty)| (m,coef) <- LC.toList xs]) 
 
 -------------------------------
 -- Construction
