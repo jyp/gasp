@@ -7,7 +7,7 @@
 
 module Algebra.Morphism.Affine where
 
-import Prelude (Eq(..), Ord(..), Functor(..), id,Bool(..))
+import Prelude (Eq(..), Ord(..), Functor(..), id,Bool(..),Show)
 import Algebra.Classes
 import Algebra.Linear
 import qualified Data.Map as M
@@ -19,7 +19,7 @@ import qualified Algebra.Morphism.LinComb as LC
 
 
 data Affine x c = Affine c (LinComb x c)
-  deriving (Functor, Eq, Ord)
+  deriving (Functor, Eq, Ord,Show)
 
 instance Multiplicative c => Scalable c (Affine x c) where
   k *^ x = k *< x
