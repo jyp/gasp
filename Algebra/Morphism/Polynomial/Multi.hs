@@ -93,7 +93,7 @@ evalMono f (M (Exponential m)) = fromLogarithm (LC.eval @Integer fromIntegral (L
 eval' :: (Multiplicative x, Additive x, Scalable c x) => (e -> x) -> Polynomial e c -> x
 eval' = eval id
 
-eval :: (Multiplicative x, Additive x, Scalable d x) => (c -> d) -> (e -> x) -> Polynomial e c -> x
+eval :: (Multiplicative x, Additive x, Scalable d x) => (c -> d) -> (v -> x) -> Polynomial v c -> x
 eval fc fe (P p) = LC.eval fc (evalMono fe) p
 
 -------------------------------
