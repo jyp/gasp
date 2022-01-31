@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -6,7 +7,7 @@
 
 module Algebra.Morphism.Polynomial.Multi where
 
-import Prelude (Int, Eq(..), Ord(..),Show(..), Functor(..), fromIntegral, id,(.),(||),Integer)
+import Prelude (Int, Eq(..), Ord(..),Show(..), Functor(..), fromIntegral, id,(.),(||),Integer,Foldable(..))
 import Data.List (intercalate,and)
 import Data.Monoid
 import Algebra.Classes
@@ -15,6 +16,8 @@ import qualified Algebra.Morphism.LinComb as LC
 import Algebra.Morphism.LinComb (LinComb(..))
 import qualified Data.Map as M
 import Data.Maybe (Maybe (..))
+import Data.Traversable
+import Control.Applicative
 
 -- | Monomial over an element set e, mapping each element to its
 -- exponent
@@ -23,12 +26,16 @@ newtype Monomial e = M (Exponential (LinComb e Int)) deriving (Multiplicative,Di
 mapMonoVars :: Ord e => (t -> e) -> Monomial t -> Monomial e
 mapMonoVars f (M (Exponential m)) = M (Exponential (LC.mapVars f m)) 
 
+traverseMonoVars :: (Applicative f, Ord e) => (v -> f e) -> Monomial v -> f (Monomial e)
+traverseMonoVars f (M (Exponential x)) = M . Exponential <$> (LC.traverseVars f x)
+
+
 mapVars  :: Ord e => (t -> e) -> Polynomial t c -> Polynomial e c
 mapVars f = P . LC.mapVars (mapMonoVars f) . fromPoly
 
 -- | Map each monomial to its coefficient
 newtype Polynomial e c = P {fromPoly :: LC.LinComb (Monomial e) c}
-  deriving (Additive,Group,AbelianAdditive,Functor,Eq,Ord,DecidableZero,Show)
+  deriving (Additive,Group,AbelianAdditive,Functor,Foldable,Traversable,Eq,Ord,DecidableZero,Show)
 
 instance (Ring c, DecidableZero c, Ord e) => Multiplicative (Polynomial e c) where
   one = P (LC.var one)
@@ -106,3 +113,9 @@ substMono = evalMono
 
 subst :: DecidableZero c => Ord f => Ord e => Ring c => Substitution e f c -> Polynomial e c -> Polynomial f c
 subst = eval'
+
+----------------------------
+-- Traversing
+
+bitraverse :: Ord w => Applicative f => (v -> f w) -> (c -> f d) -> Polynomial v c -> f (Polynomial w d)
+bitraverse f g (P x) = P <$> LC.bitraverse (traverseMonoVars f) g x

@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -7,10 +8,11 @@
 
 module Algebra.Morphism.Exponential where
 
-import Prelude (Show,Eq,Ord,Integer)
+import Prelude (Show,Eq,Ord,Integer,Functor,Foldable)
+import Data.Traversable
 import Algebra.Classes
 
-newtype Exponential a = Exponential {fromExponential :: a} deriving (Show,Eq,Ord)
+newtype Exponential a = Exponential {fromExponential :: a} deriving (Show,Eq,Ord,Foldable,Traversable,Functor)
 
 instance Additive a => Multiplicative (Exponential a) where
   Exponential a * Exponential b = Exponential (a + b)

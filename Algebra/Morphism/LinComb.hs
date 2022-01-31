@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -7,7 +8,7 @@
 
 module Algebra.Morphism.LinComb where
 
-import Prelude (Int, Eq(..), Ord(..),Show(..), Functor(..), fromIntegral, all,id,not,(.),(||),snd)
+import Prelude (Int, Eq(..), Ord(..),Show(..), Functor(..), fromIntegral, all,id,not,(.),(||),snd,Foldable)
 import Data.List (intercalate,and,filter)
 import Algebra.Classes
 import qualified Data.Map as M
@@ -18,7 +19,8 @@ import Data.Traversable
 
 -- | Normalised linear combinations as maps from variables to
 -- coefficients (zero coefficient never present in the map)
-newtype LinComb x c = LinComb {fromLinComb :: M.Map x c}  deriving (Functor,AbelianAdditive,Group,Eq,Ord,Show)
+newtype LinComb x c = LinComb {fromLinComb :: M.Map x c}
+  deriving (Functor,AbelianAdditive,Group,Eq,Ord,Show,Traversable,Foldable)
 
 deriving instance (Ord x, Scalable c c) => Scalable c (LinComb x c)
 
@@ -69,3 +71,7 @@ mapVars f (LinComb m) = unsafeFromList [(f x, e) | (x,e) <- M.assocs m]
 -- | transform variables with effect. coefficients are not touched
 traverseVars :: Applicative f => Ord x => (v -> f x) -> LinComb v c -> f (LinComb x c)
 traverseVars f e = unsafeFromList <$> traverse (\(x,c) -> (,c) <$> f x) (toList e)
+
+-- | transform variables and coefficients with effect.
+bitraverse :: Applicative f => Ord x => (v -> f x) -> (c -> f d) -> LinComb v c -> f (LinComb x d)
+bitraverse f g e = unsafeFromList <$> traverse (\(x,c) -> (,) <$> f x <*> g c) (toList e)
