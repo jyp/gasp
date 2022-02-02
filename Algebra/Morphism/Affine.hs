@@ -7,7 +7,7 @@
 
 module Algebra.Morphism.Affine where
 
-import Prelude (Eq(..), Ord(..), Functor(..), id,Bool(..),Show)
+import Prelude (Eq(..), Ord(..), Functor(..), id,Bool(..),Show,otherwise)
 import Algebra.Classes
 import Algebra.Linear
 import qualified Data.Map as M
@@ -44,6 +44,11 @@ solve x f = if k == zero then Left e else Right (k>zero,recip k *^ negate e)
 -- | Constant affine expression
 constant :: DecidableZero c => Ord x => c -> Affine x c
 constant c = Affine c zero
+
+isConstant :: Eq c => Ord x => DecidableZero c => Affine x c -> Either x c
+isConstant (Affine k x) = case LC.toList x of
+  [] -> Right k
+  ((v,_):_) -> Left v
 
 var :: Multiplicative c => Additive c => v -> Affine v c
 var x = Affine zero (LC.var x)
