@@ -161,6 +161,8 @@ instance DecidableZero Double where
   isZero = (== 0)
 instance DecidableZero Float where
   isZero = (== 0)
+instance (Prelude.Integral x, DecidableZero x) => DecidableZero (Data.Ratio.Ratio x) where
+  isZero x = isZero (Data.Ratio.numerator x)
 instance (Ord k,DecidableZero v) => DecidableZero (Map k v) where
   isZero = Prelude.all isZero
 instance DecidableZero x => DecidableZero (Complex x) where
@@ -519,11 +521,11 @@ instance Prelude.Integral a => Ring (Data.Ratio.Ratio a) where
 instance Prelude.Integral a => Field (Data.Ratio.Ratio a) where
   fromRational = Prelude.fromRational
 
+instance Scalable Rational Double where
+    r *^ d = fromRational r * d
 
 ----------------------
 -- Complex instances
-instance Scalable Rational Double where
-    r *^ d = fromRational r * d
 instance Additive a => Additive (Complex a) where
     (x:+y) + (x':+y')   =  (x+x') :+ (y+y')
     zero = zero :+ zero
