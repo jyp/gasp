@@ -62,5 +62,5 @@ subst f (Affine c p) = constant c + LC.eval id f p
 mapVars :: Ord x => (v -> x) -> Affine v c -> Affine x c
 mapVars f (Affine k e) = Affine k (LC.mapVars f e)
 
-traverseVars :: Additive c => Ord x => Applicative f => (v -> f x) -> Affine v c -> f (Affine x c)
+traverseVars :: Ord x => Applicative f => (v -> f x) -> Affine v c -> f (Affine x c)
 traverseVars f (Affine k e) = Affine k <$> LC.traverseVars f e
