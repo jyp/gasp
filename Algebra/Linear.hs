@@ -260,6 +260,7 @@ rotationFromTo from to = c *^ identity + s *^ crossProductMatrix v + (1-c) *^ (v
 -- >>> let u = (V3 (1::Double) 0 0); v = (V3 0 1 1); in (rotationFromTo u v) `matVecMul` u
 -- Euclid {fromEuclid = VNext (VNext (VNext VZero 0.0) 1.4142135623730951) 1.4142135623730951}
 
+-- | Transposition as traverse. Extremely slow for f = g = Data.Vector.Vector
 transpose :: Applicative g => Traversable f => Mat a f g -> Mat a g f
 transpose = Mat . sequenceA . fromMat
 
