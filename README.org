@@ -1,0 +1,45 @@
+* Gasp! Algebra Structures Prelude
+
+This is another set of Haskell classes for algebraic structures.
+It may be used as an alternative prelude for numeric stuff.
+
+* Design notes
+
+** Scaling.
+
+There is a tension between scalable types and multiplicatives.
+
+Certain types are both vectors (scalable) and ring element (multiplicative). For instance:
+
+- Polynomials, Complex.
+
+*** Option not taken:
+Scalable scalar vector | vector -> scalar
+
+vector could determine scalar. This cannot be done without some sort of annotations. Consider:
+
+vector = Vector (Polynomial x c)
+
+The scalar could be c or Polynomial x c.
+
+
+So this would require adding a newtype "Scalar" indicating which type would be the scalar:
+
+Vector (Scalar (Polynomial x c))
+
+Vector (Polynomial x (Scalar c))
+
+
+For scalars, we lift Multiplicative instances to Scalable:
+
+instance Scalable (Scalar x) (Scalar x) where
+  Scalar x *^ Scalar y = Scalar (x*y)
+
+
+Typically, code would be unaffected or better, because
+we can always work with Scalable s a => Vector a or such.
+
+But working with concrete types require conversions. Perhaps coercions
+can make this pleasant?
+   
+
