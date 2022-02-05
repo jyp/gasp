@@ -12,35 +12,41 @@ import Prelude (Show,Eq,Ord,Integer,Functor,Foldable)
 import Data.Traversable
 import Algebra.Classes
 
-newtype Exponential a = Exponential {fromExponential :: a} deriving (Show,Eq,Ord,Foldable,Traversable,Functor)
+newtype Exp a = Exp a deriving (Show,Eq,Ord,Foldable,Traversable,Functor)
 
-instance Additive a => Multiplicative (Exponential a) where
-  Exponential a * Exponential b = Exponential (a + b)
-  one = Exponential zero
-  Exponential a ^+ n = Exponential (times n a)
+fromExp :: Exp a -> a
+fromExp (Exp x) = x
 
-instance Group a => Division (Exponential a) where
-  recip (Exponential a) = Exponential (negate a)
-  Exponential a / Exponential b = Exponential (a - b)
+instance Additive a => Multiplicative (Exp a) where
+  Exp a * Exp b = Exp (a + b)
+  one = Exp zero
+  Exp a ^+ n = Exp (times n a)
 
-instance Field a => Roots (Exponential a) where
-  root n (Exponential x) = Exponential (x / fromInteger n)
+instance Group a => Division (Exp a) where
+  recip (Exp a) = Exp (negate a)
+  Exp a / Exp b = Exp (a - b)
+
+instance Field a => Roots (Exp a) where
+  root n (Exp x) = Exp (x / fromInteger n)
 
 
-newtype Logarithm a = Logarithm {fromLogarithm :: a} deriving (Show,Eq,Ord)
+newtype Log a = Log a deriving (Show,Eq,Ord)
 
-instance Multiplicative a => Additive (Logarithm a) where
-  Logarithm a + Logarithm b = Logarithm (a * b)
-  zero = Logarithm one
-  times n (Logarithm a) = Logarithm (a ^+ n)
+fromLog :: Log a -> a
+fromLog (Log x) = x
 
-instance Multiplicative a => Scalable Integer (Logarithm a) where
-  n *^ Logarithm x = Logarithm (x ^+ n)
+instance Multiplicative a => Additive (Log a) where
+  Log a + Log b = Log (a * b)
+  zero = Log one
+  times n (Log a) = Log (a ^+ n)
+
+instance Multiplicative a => Scalable Integer (Log a) where
+  n *^ Log x = Log (x ^+ n)
   
-instance Division a => Group (Logarithm a) where
-  negate (Logarithm a) = Logarithm (recip a)
-  Logarithm a - Logarithm b = Logarithm (a / b)
+instance Division a => Group (Log a) where
+  negate (Log a) = Log (recip a)
+  Log a - Log b = Log (a / b)
 
--- instance Roots a => Field (Logarithm a) where
--- fromRational x = Logarithm (root (denominator x) (fromInteger (numerator x)))
+-- instance Roots a => Field (Log a) where
+-- fromRational x = Log (root (denominator x) (fromInteger (numerator x)))
 
