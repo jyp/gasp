@@ -22,8 +22,6 @@ import Data.Traversable
 newtype LinComb x c = LinComb {fromLinComb :: M.Map x c}
   deriving (Functor,AbelianAdditive,Group,Eq,Ord,Show,Traversable,Foldable)
 
-deriving instance (Ord x, Scalable c c) => Scalable c (LinComb x c)
-
 eval :: forall d x c v. Scalable d x => Additive x => (c -> d) -> (v -> x) -> LinComb v c -> x
 eval fc fv p = sum [ fc c *^ fv v | (v, c) <- toList p ]
 

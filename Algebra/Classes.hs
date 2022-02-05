@@ -27,13 +27,16 @@ import Control.Applicative
 infixl 6 -
 infixl 6 +
 
-infixl 7 *
 infixr 7 *^
+infixr 7 *<
+
+infixl 7 *
 infixl 7 /
 infixl 7 `div`
 infixl 7 `mod`
 infixl 7 `quot`
 infixl 7 `rem`
+
 infixr 8 ^
 infixr 8 ^+
 infixr 8 ^/
@@ -133,7 +136,7 @@ instance Additive Float where
   zero = 0
   times n x = Prelude.fromIntegral n * x
 
-instance (Ord k,Additive v) => Additive (Map k v) where
+instance (Ord k,AbelianAdditive v) => Additive (Map k v) where
   (+) = M.unionWith (+)
   zero = M.empty
   times n = fmap (times n)
@@ -163,7 +166,7 @@ instance DecidableZero Float where
   isZero = (== 0)
 instance (Prelude.Integral x, DecidableZero x) => DecidableZero (Data.Ratio.Ratio x) where
   isZero x = isZero (Data.Ratio.numerator x)
-instance (Ord k,DecidableZero v) => DecidableZero (Map k v) where
+instance (Ord k,DecidableZero v,AbelianAdditive v) => DecidableZero (Map k v) where
   isZero = Prelude.all isZero
 instance DecidableZero x => DecidableZero (Complex x) where
   isZero (x :+ y) = isZero x && isZero y
@@ -244,15 +247,33 @@ instance Group Float where
   (-) = (Prelude.-)
   negate = Prelude.negate
 
-instance (Ord k,Group v) => Group (Map k v) where
+instance (Ord k,Group v,AbelianAdditive v) => Group (Map k v) where
   -- This definition does not work:
   -- (-) = M.unionWith (-)
   -- because if a key is not present on the lhs. then the rhs won't be negated.
   negate = fmap negate
 
+-- | Functorial scaling. Compared to (*^) this operator disambiguates
+-- the scalar type, by using the functor structure and using the
+-- multiplicative instance for scalars.
+(*<) :: (Functor f, Multiplicative a) => a -> f a -> f a
+s *< v = (s*) <$> v
 
-class Scalable scalar a where
-  (*^) :: scalar -> a -> a
+-- | Any instance must preserve the following invariants: 1. if
+-- Multiplicative a and Scalable a a, then (*) = (*^) for a.
+-- 2. Scalable must define a partial order relation, in particular
+-- compatible with (Functor f, Scalable s a) => Scalable s (f a).
+class Scalable s a where
+  (*^) :: s -> a -> a
+
+-- | Any special instance should be equal to this.
+instance {-# Overlappable #-} (Functor f, Scalable s a) => Scalable s (f a) where
+  s *^ x = fmap (s *^) x
+
+  
+-- | A prefix variant of (*^), useful when using type applications.
+scale :: forall s a. Scalable s a => s -> a -> a
+scale = (*^)
 
 type SemiModule s a = (AbelianAdditive a, SemiRing s, Scalable s a)
 
@@ -302,9 +323,6 @@ instance Scalable Double Double where
 
 instance Scalable Float Float where
   (*^) = (*)
-
-instance (Ord k, Scalable a b) => Scalable a (Map k b) where
-  s *^ m = fmap (s *^) m
 
 -- | Multiplicative monoid
 class Multiplicative a where
@@ -538,8 +556,6 @@ instance Group a => Group  (Complex a) where
 instance AbelianAdditive a => AbelianAdditive (Complex a)
 instance Ring a => Scalable (Complex a) (Complex a) where
   (*^) = (*)
-instance Ring a => Scalable a (Complex a) where
-  s *^ (x :+ y) =  (s *^ x :+ s *^ y)
 instance Ring a => Ring (Complex a) where
     fromInteger n  =  fromInteger n :+ zero
 

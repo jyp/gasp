@@ -18,27 +18,41 @@ intances Multiplicative (Poly x c)
 
 - It's nice if Multiplicative x implies Scalable x x
 
-*** TODO Option 0 (chosen)
+*** Overlappable Option (chosen)
 
 Ring x implies Scalable x x
 
-In practice,
-
-Scalable a b => Scalable a (F b)   (module structure)
-
-leads to overlapping instances if F b is a ring as well.
-
-Assume Multiplicative X.
-Then we have:
- 1. Scalable X X           -- multiplicative for X
- 2. Scalable X (F X)       -- module for F X
- 3. Scalable (F X) (F X)   -- multiplicative for F X
- 4. Scalable X (F (F X))   
- 5. Scalable (F X) (F (F X))   
-  etc.
+So if F b is a ring and has a module stucture, we might have:
 
 
-*** Option 1: Scalar new type. (not chosen)
+Scalable (F a) (F a)
+Scalable a (F a)
+
+That's 100% fine and GHC can see that.
+
+Issue 1. In many cases GHC can't determine the scalar type to
+use. This means that type annotations are often needed This is
+mitigated by type applications. Another help
+
+Issue 2.
+We may want to generalise to:
+
+Scalable s a => Scalable s (F a)            (2)
+
+Now, this instance overlaps with Scalable (F a) (F a).
+
+Indeed, Scalable (F a) (F a) can be solved via (2) if
+
+Scalable (F a) a is ever defined. This should however /never/ be
+defined, because F a is a strictly bigger type than a for every a. So it makes no
+sense have (F a) be a scalar for a for any a.
+
+In sum, as long as the overlappable instances strictly decrease the
+size of types (in the 2nd argument position), we're fine.
+Obviously, instances should additionally be coherent!
+
+
+*** Scalar new type option (not chosen)
 Scalable scalar vector | vector -> scalar
 
 vector could determine scalar. This cannot be done without some sort of annotations. Consider:
@@ -67,7 +81,7 @@ we can always work with Scalable s a => Vector a or such.
 But working with concrete types require conversions. Perhaps coercions
 can make this pleasant? https://hackage.haskell.org/package/base-4.16.0.0/docs/Data-Coerce.html
    
-*** Option 2: Functors
+*** Functors Options
 
 scale x = fmap (x*)
 

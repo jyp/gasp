@@ -25,15 +25,13 @@
 
 module Algebra.Linear where
 
-import Algebra.Classes hiding ((*<))
-import Prelude (Functor(..),Show(..),Eq(..),Int,fst,($),Ord,Double)
+import Algebra.Classes
+import Prelude (Show(..),Eq(..),Int,fst,($),Ord,)
 import Control.Applicative
 import Data.Foldable hiding (sum,product)
 import Data.Traversable
 import Control.Monad.State
 import Algebra.Category
-
-infixr 7 *<
 
 type VectorSpace scalar a = (Field scalar, Module scalar a, Group a)
 -- Because of the existence of bases, vector spaces can always be made representable (Traversable, Applicative) functors.
@@ -123,9 +121,6 @@ instance (Applicative f,Group a) => Group (Euclid f a) where
   negate x = negate <$> x
   x - y = (-) <$> x <*> y
 
-instance (Applicative f,Scalable s a) => Scalable s (Euclid f a) where
-  s *^ t = (s*^) <$> t
-
 pureMat :: (Applicative v, Applicative w) => s -> Mat s v w
 pureMat x = Mat (pure (pure x))
 
@@ -137,7 +132,7 @@ instance (Applicative f,Applicative g,Group a) => Group (Mat a f g) where
   negate x = matFlat (negate <$> flatMat x)
   x - y = matFlat ((-) <$> flatMat x <*> flatMat y)
 
-instance (Applicative f, Applicative g,Scalable s a) => Scalable s (Mat a f g) where
+instance (Functor f, Functor g,Scalable s a) => Scalable s (Mat a f g) where
   s *^ Mat t = Mat (((s*^) <$>) <$> t)
 
 
@@ -202,10 +197,6 @@ pattern Mat3x3 a b c d e f g h i = Mat (V3 (V3 a d g)
                                            (V3 b e h)
                                            (V3 c f i))
 
--- | Vector scaling. If Module a (f a), then (*^) must be the same as (*<).
-(*<) :: (Functor f, Multiplicative b) => b -> f b -> f b
-s *< v = (s*) <$> v
-
 
 (<+>) :: (Applicative f, Additive b) => f b -> f b -> f b
 u <+> v = (+) <$> u <*> v
@@ -260,7 +251,8 @@ rotationFromTo from to = c *^ identity + s *^ crossProductMatrix v + (1-c) *^ (v
 -- >>> let u = (V3 (1::Double) 0 0); v = (V3 0 1 1); in (rotationFromTo u v) `matVecMul` u
 -- Euclid {fromEuclid = VNext (VNext (VNext VZero 0.0) 1.4142135623730951) 1.4142135623730951}
 
--- | Transposition as traverse. Extremely slow for f = g = Data.Vector.Vector
+-- | Transposition as traverse. Assumes "zippy" applicative instances
+-- (so, fails for Data.Vector.Vector or List, which have set of choices semantics).
 transpose :: Applicative g => Traversable f => Mat a f g -> Mat a g f
 transpose = Mat . sequenceA . fromMat
 

@@ -76,12 +76,10 @@ instance (DecidableZero c, Ring c, Ord e) => Scalable (Polynomial e c) (Polynomi
 instance (DecidableZero c,Ring c,Ord e) => Ring (Polynomial e c) where
   fromInteger = constPoly . fromInteger
 
-deriving instance (Ord x, Scalable c c) => Scalable c (Polynomial x c)
-
 prodMonoPoly :: (Ord e) => Monomial e -> Polynomial e c -> Polynomial e c
 prodMonoPoly m (P p) = P (LC.mulVarsMonotonic m p)
 
--- causes overlapping instances (a bit annoying)
+-- This instance is incoherent, because there could be Scalable (Monomial e) c.
 -- instance (Eq c, Ord c,Ring c, Ord e) => Scalable (Monomial e) (Polynomial e c) where
 --   (*^) = prodMonoPoly
 
