@@ -13,7 +13,32 @@ Certain types are both vectors (scalable) and ring element (multiplicative). For
 
 - Polynomials, Complex.
 
-*** Option not taken:
+intances Scalable c (Poly x c)
+intances Multiplicative (Poly x c)
+
+- It's nice if Multiplicative x implies Scalable x x
+
+*** TODO Option 0 (chosen)
+
+Ring x implies Scalable x x
+
+In practice,
+
+Scalable a b => Scalable a (F b)   (module structure)
+
+leads to overlapping instances if F b is a ring as well.
+
+Assume Multiplicative X.
+Then we have:
+ 1. Scalable X X           -- multiplicative for X
+ 2. Scalable X (F X)       -- module for F X
+ 3. Scalable (F X) (F X)   -- multiplicative for F X
+ 4. Scalable X (F (F X))   
+ 5. Scalable (F X) (F (F X))   
+  etc.
+
+
+*** Option 1: Scalar new type. (not chosen)
 Scalable scalar vector | vector -> scalar
 
 vector could determine scalar. This cannot be done without some sort of annotations. Consider:
@@ -36,10 +61,16 @@ instance Scalable (Scalar x) (Scalar x) where
   Scalar x *^ Scalar y = Scalar (x*y)
 
 
-Typically, code would be unaffected or better, because
+Typically, generic code is unaffected. Or better, because
 we can always work with Scalable s a => Vector a or such.
 
 But working with concrete types require conversions. Perhaps coercions
-can make this pleasant?
+can make this pleasant? https://hackage.haskell.org/package/base-4.16.0.0/docs/Data-Coerce.html
    
+*** Option 2: Functors
 
+scale x = fmap (x*)
+
+- investigated in Algebra.Linear
+
+- This prevents using scaling for scalar types or for efficient representations (say unboxed arrays)
