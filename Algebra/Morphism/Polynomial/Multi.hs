@@ -7,7 +7,7 @@
 
 module Algebra.Morphism.Polynomial.Multi where
 
-import Prelude (Int, Eq(..), Ord(..),Show(..), Functor(..), fromIntegral, id,(.),(||),Integer,Foldable(..))
+import Prelude ((&&), Bool(..), Int, Eq(..), Ord(..),Show(..), Functor(..), fromIntegral, id,(.),(||),Integer,Foldable(..))
 import Data.List (intercalate,and)
 import Data.Monoid
 import Algebra.Classes
@@ -18,16 +18,41 @@ import qualified Data.Map as M
 import Data.Maybe (Maybe (..))
 import Data.Traversable
 import Control.Applicative
+import Data.Function
 
 -- | Monomial over an element set e, mapping each element to its
 -- exponent
-newtype Monomial e = M (Exponential (LinComb e Int)) deriving (Multiplicative,Division,Ord,Eq,Show)
+newtype Monomial e = M (Exp (LinComb e Int)) deriving (Multiplicative,Division,Ord,Eq,Show)
+
+monoLinComb :: Monomial e -> LinComb e Int
+monoLinComb (M (Exp x)) = x
+-- Note: derived ordering is lexicographic.
 
 mapMonoVars :: Ord e => (t -> e) -> Monomial t -> Monomial e
-mapMonoVars f (M (Exponential m)) = M (Exponential (LC.mapVars f m)) 
+mapMonoVars f (M (Exp m)) = M (Exp (LC.mapVars f m)) 
 
 traverseMonoVars :: (Applicative f, Ord e) => (v -> f e) -> Monomial v -> f (Monomial e)
-traverseMonoVars f (M (Exponential x)) = M . Exponential <$> (LC.traverseVars f x)
+traverseMonoVars f (M (Exp x)) = M . Exp <$> (LC.traverseVars f x)
+
+monoDegree :: Monomial e -> Int
+monoDegree =  LC.eval id (\_ -> 1) . monoLinComb
+  -- LC.eval id (\_ -> Scalar 1) m
+
+-- >>> monoDegree (varM "x" ^+3 * varM "y" ^+2)
+-- 5
+
+monoDivisible :: Ord k => Monomial k -> Monomial k -> Bool
+monoDivisible (M (Exp (LinComb m))) (M (Exp (LinComb n))) =
+  M.isSubmapOfBy (<=) m n
+
+
+monoLcm :: Ord v => Monomial v -> Monomial v -> Monomial v
+monoLcm (M (Exp (LinComb a))) (M (Exp (LinComb b)))
+  = M $ Exp $ LinComb $ M.unionWith max a b
+
+-- monoComplement m n * m = monoLcm m n
+monoComplement :: Ord v => Monomial v -> Monomial v -> Monomial v
+monoComplement m n = monoLcm m n / m
 
 
 mapVars  :: Ord e => (t -> e) -> Polynomial t c -> Polynomial e c
@@ -54,23 +79,20 @@ instance (DecidableZero c,Ring c,Ord e) => Ring (Polynomial e c) where
 deriving instance (Ord x, Scalable c c) => Scalable c (Polynomial x c)
 
 prodMonoPoly :: (Ord e) => Monomial e -> Polynomial e c -> Polynomial e c
-prodMonoPoly m (P p) = P (LC.mapVars (* m) p)
+prodMonoPoly m (P p) = P (LC.mulVarsMonotonic m p)
 
 -- causes overlapping instances (a bit annoying)
 -- instance (Eq c, Ord c,Ring c, Ord e) => Scalable (Monomial e) (Polynomial e c) where
 --   (*^) = prodMonoPoly
-  
--- instance Show e => Show (Monomial e) where
---   show (M (Exponential xs)) = mconcat ([show m <> (if coef /= 1 then ("^" <> show coef) else mempty)| (m,coef) <- LC.toList xs]) 
 
 -------------------------------
 -- Construction
 
 varM :: e -> Monomial e
-varM x = M (Exponential (LC.var x))
+varM x = M (Exp (LC.var x))
 
 -- >>> (varM "x" * varM "y" * varM "x" ^ 2)
--- "x"^3"y"
+-- M {fromM = Exp {fromExp = LinComb {fromLinComb = fromList [("x",3),("y",1)]}}}
 
 varP :: Multiplicative c => e -> Polynomial e c
 varP x = monoPoly (varM x)
@@ -95,7 +117,7 @@ constPoly c = P (LC.fromList [(one,c)])
 -- Evaluation
 
 evalMono ::  Multiplicative x => (e -> x) -> Monomial e -> x
-evalMono f (M (Exponential m)) = fromLogarithm (LC.eval @Integer fromIntegral (Logarithm . f) m)
+evalMono f (M (Exp m)) = fromLog (LC.eval @Integer fromIntegral (Log . f) m)
 
 eval' :: (Multiplicative x, Additive x, Scalable c x) => (e -> x) -> Polynomial e c -> x
 eval' = eval id
@@ -119,3 +141,34 @@ subst = eval'
 
 bitraverse :: Ord w => Applicative f => (v -> f w) -> (c -> f d) -> Polynomial v c -> f (Polynomial w d)
 bitraverse f g (P x) = P <$> LC.bitraverse (traverseMonoVars f) g x
+
+-------------------------
+-- Gröbner basis, division
+
+leadingView :: Polynomial v c -> Maybe ((Monomial v,c),Polynomial v c)
+leadingView (P (LinComb a)) = flip fmap (M.minViewWithKey a) $ \
+  (x,xs) -> (x, P (LinComb xs))
+
+
+
+{-
+lm :: Polynomial r v o -> Monomial v o
+lm (P ((T _ m):_)) = m
+lm (P [])          = error "lm: zero polynomial"
+
+
+spoly :: [(Monomial v,x)] -> [(Monomial v,x)] -> [(Monomial v,x)] 
+spoly ((m,a):_) ((n,b):_) = n' *^ f - m' *^ g
+    where
+      n' = T 1       (complement m n)
+      m' = T (a / b) (complement n m)
+
+nf :: Polynomial r v -> [Polynomial r v] -> Polynomial r v
+nf f s = go f where
+  go h | h == 0      = 0
+       | []    <- s' = h
+       | (g:_) <- s' = go (spoly h g)
+       where
+         s' = [g | g <- s, lm h `monoDivisible` lm g]
+
+-}

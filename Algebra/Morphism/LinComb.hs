@@ -25,7 +25,7 @@ newtype LinComb x c = LinComb {fromLinComb :: M.Map x c}
 deriving instance (Ord x, Scalable c c) => Scalable c (LinComb x c)
 
 eval :: forall d x c v. Scalable d x => Additive x => (c -> d) -> (v -> x) -> LinComb v c -> x
-eval fc fv (LinComb p) = sum [ fc c *^ fv v | (v, c) <- M.assocs p ]
+eval fc fv p = sum [ fc c *^ fv v | (v, c) <- toList p ]
 
 normalise :: DecidableZero c => LinComb x c -> LinComb x c
 normalise (LinComb x) = LinComb (M.filter (not . isZero) x)
@@ -47,6 +47,7 @@ toList = {- filter ((/= zero) . snd)  no need to filter zeros because normalised
 var :: Multiplicative c => x -> LinComb x c
 var x = LinComb (M.singleton x one)
 
+-- | Convert from list without testing coefficients
 unsafeFromList :: Ord v => [(v,c)] -> LinComb v c
 unsafeFromList = LinComb . M.fromList
 
@@ -66,7 +67,10 @@ subst f = eval id f
 -- | transform variables. coefficients are not touched
 mapVars :: Ord x => (t -> x) -> LinComb t c -> LinComb x c
 mapVars f (LinComb m) = unsafeFromList [(f x, e) | (x,e) <- M.assocs m]
-                   -- unsafe is ok because coefficients are not touched
+
+-- | Multiplies elements, assuming multiplication is monotonous.
+mulVarsMonotonic :: Multiplicative x => x -> LinComb x c -> LinComb x c
+mulVarsMonotonic x (LinComb m) = LinComb (M.mapKeysMonotonic (x *) m) 
 
 -- | transform variables with effect. coefficients are not touched
 traverseVars :: Applicative f => Ord x => (v -> f x) -> LinComb v c -> f (LinComb x c)
