@@ -28,7 +28,7 @@ eval fc fv p = sum [ fc c *^ fv v | (v, c) <- toList p ]
 normalise :: DecidableZero c => LinComb x c -> LinComb x c
 normalise (LinComb x) = LinComb (M.filter (not . isZero) x)
 
-instance (Additive c,DecidableZero c,Ord e) => Additive (LinComb e c) where
+instance (AbelianAdditive c,DecidableZero c,Ord e) => Additive (LinComb e c) where
   zero = LinComb zero
   LinComb x + LinComb y = normalise (LinComb (x+y))
 
@@ -52,14 +52,14 @@ unsafeFromList = LinComb . M.fromList
 fromList :: DecidableZero c => Additive c => Ord v => [(v,c)] -> LinComb v c
 fromList = normalise . LinComb . M.fromListWith (+)
 
-instance (Eq c, DecidableZero c, Ord e) => DecidableZero (LinComb e c) where
-  isZero (LinComb p) = all isZero (M.elems p) 
+instance (AbelianAdditive c, Eq c, DecidableZero c, Ord e) => DecidableZero (LinComb e c) where
+  isZero (LinComb p) = p == M.empty  
 
 -- instance (Show c, Show e, Eq c, Multiplicative c) => Show (LinComb e c) where
 --   show (LinComb xs) = intercalate "+" ([(if coef /= one then show coef else mempty) <> show m  | (m,coef) <- M.toList xs])
 
 -- | Substitution by evaluation
-subst :: DecidableZero c => Additive c => Scalable c c => Ord v => (x -> LinComb v c) -> LinComb x c -> LinComb v c
+subst :: DecidableZero c => AbelianAdditive c => Scalable c c => Ord v => (x -> LinComb v c) -> LinComb x c -> LinComb v c
 subst f = eval id f
 
 -- | transform variables. coefficients are not touched
