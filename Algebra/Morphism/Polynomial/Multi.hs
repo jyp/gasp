@@ -1,3 +1,4 @@
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -7,7 +8,7 @@
 
 module Algebra.Morphism.Polynomial.Multi where
 
-import Prelude ((&&), Bool(..), Int, Eq(..), Ord(..),Show(..), Functor(..), fromIntegral, id,(.),(||),Integer,Foldable(..))
+import Prelude ((&&), Bool(..), Int, Eq(..), Ord(..),Show(..), Functor(..), fromIntegral, id,(.),(||),Integer,Foldable(..),error)
 import Data.List (intercalate,and)
 import Data.Monoid
 import Algebra.Classes
@@ -76,8 +77,9 @@ instance (DecidableZero c, Ring c, Ord e) => Scalable (Polynomial e c) (Polynomi
 instance (DecidableZero c,Ring c,Ord e) => Ring (Polynomial e c) where
   fromInteger = constPoly . fromInteger
 
-prodMonoPoly :: (Ord e) => Monomial e -> Polynomial e c -> Polynomial e c
+prodMonoPoly, (*!) :: (Ord e) => Monomial e -> Polynomial e c -> Polynomial e c
 prodMonoPoly m (P p) = P (LC.mulVarsMonotonic m p)
+(*!) = prodMonoPoly
 
 -- This instance is incoherent, because there could be Scalable (Monomial e) c.
 -- instance (Eq c, Ord c,Ring c, Ord e) => Scalable (Monomial e) (Polynomial e c) where
@@ -148,25 +150,21 @@ leadingView (P (LinComb a)) = flip fmap (M.minViewWithKey a) $ \
   (x,xs) -> (x, P (LinComb xs))
 
 
+spoly :: Field c => DecidableZero c => Ord v => Polynomial v c -> Polynomial v c -> Polynomial v c
+spoly f@(leadingView -> Just ((m,a),_)) g@(leadingView -> Just ((n,b),_))
+  = (n' *! f) - (a/b) *^ (m' *! g) where
+      n' = monoComplement m n
+      m' = monoComplement n m
+spoly _ _ = error "spoly: zero"
 
-{-
-lm :: Polynomial r v o -> Monomial v o
-lm (P ((T _ m):_)) = m
-lm (P [])          = error "lm: zero polynomial"
-
-
-spoly :: [(Monomial v,x)] -> [(Monomial v,x)] -> [(Monomial v,x)] 
-spoly ((m,a):_) ((n,b):_) = n' *^ f - m' *^ g
-    where
-      n' = T 1       (complement m n)
-      m' = T (a / b) (complement n m)
-
-nf :: Polynomial r v -> [Polynomial r v] -> Polynomial r v
-nf f s = go f where
-  go h | h == 0      = 0
+normalForm :: Eq c => DecidableZero c => Field c => Ord x => Polynomial x c -> [Polynomial x c] -> Polynomial x c 
+normalForm f s = go f where
+  go h | isZero h    = zero
        | []    <- s' = h
        | (g:_) <- s' = go (spoly h g)
        where
          s' = [g | g <- s, lm h `monoDivisible` lm g]
+         lm x = case leadingView x of
+           Nothing -> error "normalForm: zero"
+           Just ((m,_),_) -> m
 
--}
