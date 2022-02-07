@@ -139,6 +139,11 @@ instance (Ord k,AbelianAdditive v) => Additive (Map k v) where
   zero = M.empty
   times n = fmap (times n)
 
+instance (Additive v) => Additive (k -> v) where
+  (+) = liftA2 (+)
+  zero = pure zero
+  times n = fmap (times n)
+
 class Additive r => DecidableZero r where
   isZero :: r -> Bool
 
@@ -184,6 +189,7 @@ instance AbelianAdditive Int
 instance AbelianAdditive Double
 instance AbelianAdditive Float
 instance (Ord k,AbelianAdditive v) => AbelianAdditive (Map k v)
+instance (AbelianAdditive v) => AbelianAdditive (k -> v)
 
 multDefault :: Group a => Natural -> a -> a
 multDefault n x = if n < 0 then negate (times (negate n) x) else times n x
@@ -251,6 +257,10 @@ instance (Ord k,Group v,AbelianAdditive v) => Group (Map k v) where
   -- because if a key is not present on the lhs. then the rhs won't be negated.
   negate = fmap negate
 
+instance (Group v) => Group (k -> v) where
+  negate = fmap negate
+  (-) = liftA2 (-)
+
 -- | Functorial scaling. Compared to (*^) this operator disambiguates
 -- the scalar type, by using the functor structure and using the
 -- multiplicative instance for scalars.
@@ -261,13 +271,17 @@ s *< v = (s*) <$> v
 -- Multiplicative a and Scalable a a, then (*) = (*^) for a.
 -- 2. Scalable must define a partial order relation, in particular,
 -- instances of the form (Scalable s a) => Scalable s (T ... a ...)
--- are acceptable.
+-- are acceptable, and should be declared overlappable.
 
 class Scalable s a where
   (*^) :: s -> a -> a
 
 instance {-# Overlappable #-} Scalable s a => Scalable s (Map k a) where
   s *^ x = fmap (s *^) x
+
+instance {-# Overlappable #-} Scalable s a => Scalable s (k -> a) where
+  s *^ x = fmap (s *^) x
+
   
 -- | A prefix variant of (*^), useful when using type applications.
 scale :: forall s a. Scalable s a => s -> a -> a
