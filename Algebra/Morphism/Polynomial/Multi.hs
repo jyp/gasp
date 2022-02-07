@@ -62,6 +62,7 @@ mapVars f = P . LC.mapVars (mapMonoVars f) . fromPoly
 -- | Map each monomial to its coefficient
 newtype Polynomial e c = P {fromPoly :: LC.LinComb (Monomial e) c}
   deriving (Additive,Group,AbelianAdditive,Functor,Foldable,Traversable,Eq,Ord,DecidableZero,Show)
+deriving instance {-# Overlappable #-} Scalable s a => Scalable s (Polynomial k a)
 
 instance (Ring c, DecidableZero c, Ord e) => Multiplicative (Polynomial e c) where
   one = P (LC.var one)

@@ -26,24 +26,26 @@ So if F b is a ring and has a module stucture, we might have:
 
 
 Scalable (F a) (F a)
-Scalable a (F a)
+Scalable a (F a)                          (1)
 
 That's 100% fine and GHC can see that.
 
-Issue 1. In many cases GHC can't determine the scalar type to
-use. This means that type annotations are often needed This is
-mitigated by type applications. Another help
+Issue 1 (benign). When using a literal scalar, GHC can't determine the
+scalar type to use. This means that type annotations are often needed
+This is mitigated by type applications. Exported named defaults may
+come soon to help as well.
 
 Issue 2.
-We may want to generalise to:
+We may want to generalise (1) to:
 
 Scalable s a => Scalable s (F a)            (2)
 
 Now, this instance overlaps with Scalable (F a) (F a).
 
 Indeed, Scalable (F a) (F a) can be solved via (2) if
+Scalable (F a) a is ever defined.
 
-Scalable (F a) a is ever defined. This should however /never/ be
+This should however /never/ be
 defined, because F a is a strictly bigger type than a for every a. So it makes no
 sense have (F a) be a scalar for a for any a.
 

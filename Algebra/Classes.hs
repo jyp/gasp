@@ -45,8 +45,6 @@ infixr 8 ^?
 
 type Natural = Integer
 
-
-
 timesDefault :: (Additive a1, Additive a2, Prelude.Integral a1) => a1 -> a2 -> a2
 timesDefault n0 = if n0 < zero then Prelude.error "Algebra.Classes.times: negative number of times" else go n0
     where go 0 _ = zero
@@ -261,15 +259,15 @@ s *< v = (s*) <$> v
 
 -- | Any instance must preserve the following invariants: 1. if
 -- Multiplicative a and Scalable a a, then (*) = (*^) for a.
--- 2. Scalable must define a partial order relation, in particular
--- compatible with (Functor f, Scalable s a) => Scalable s (f a).
+-- 2. Scalable must define a partial order relation, in particular,
+-- instances of the form (Scalable s a) => Scalable s (T ... a ...)
+-- are acceptable.
+
 class Scalable s a where
   (*^) :: s -> a -> a
 
--- | Any special instance should be equal to this.
-instance {-# Overlappable #-} (Functor f, Scalable s a) => Scalable s (f a) where
+instance {-# Overlappable #-} Scalable s a => Scalable s (Map k a) where
   s *^ x = fmap (s *^) x
-
   
 -- | A prefix variant of (*^), useful when using type applications.
 scale :: forall s a. Scalable s a => s -> a -> a

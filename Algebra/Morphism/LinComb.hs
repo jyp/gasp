@@ -21,6 +21,7 @@ import Data.Traversable
 -- coefficients (zero coefficient never present in the map)
 newtype LinComb x c = LinComb {fromLinComb :: M.Map x c}
   deriving (Functor,AbelianAdditive,Group,Eq,Ord,Show,Traversable,Foldable)
+deriving instance {-# Overlappable #-} Scalable s a => Scalable s (LinComb k a)
 
 eval :: forall d x c v. Scalable d x => Additive x => (c -> d) -> (v -> x) -> LinComb v c -> x
 eval fc fv p = sum [ fc c *^ fv v | (v, c) <- toList p ]
@@ -31,6 +32,7 @@ normalise (LinComb x) = LinComb (M.filter (not . isZero) x)
 instance (AbelianAdditive c,DecidableZero c,Ord e) => Additive (LinComb e c) where
   zero = LinComb zero
   LinComb x + LinComb y = normalise (LinComb (x+y))
+
 
 -- Alternative instances for non-normalised version:
 -- instance (Eq e, Eq c, Additive c) => Eq (LinComb e c) where
