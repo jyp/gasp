@@ -568,6 +568,8 @@ instance Group a => Group  (Complex a) where
 instance AbelianAdditive a => AbelianAdditive (Complex a)
 instance Ring a => Scalable (Complex a) (Complex a) where
   (*^) = (*)
+instance {-# Overlappable #-} Scalable s a => Scalable s (Complex a) where
+  s *^ x = fmap (s *^) x
 instance Ring a => Ring (Complex a) where
     fromInteger n  =  fromInteger n :+ zero
 
