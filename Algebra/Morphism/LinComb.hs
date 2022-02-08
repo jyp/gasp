@@ -19,10 +19,12 @@ import Data.Traversable
 
 -- | Normalised linear combinations as maps from variables to
 -- coefficients (zero coefficient never present in the map)
-newtype LinComb x c = LinComb {fromLinComb :: M.Map x c}
+newtype LinComb x c = LinComb (M.Map x c)
   deriving (Functor,AbelianAdditive,Group,Eq,Ord,Show,Traversable,Foldable)
 deriving instance {-# Overlappable #-} Scalable s a => Scalable s (LinComb k a)
 
+fromLinComb :: LinComb x c -> M.Map x c
+fromLinComb (LinComb x) = x
 eval :: forall d x c v. Scalable d x => Additive x => (c -> d) -> (v -> x) -> LinComb v c -> x
 eval fc fv p = sum [ fc c *^ fv v | (v, c) <- toList p ]
 
