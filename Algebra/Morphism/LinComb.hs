@@ -8,19 +8,19 @@
 
 module Algebra.Morphism.LinComb where
 
-import Prelude (Int, Eq(..), Ord(..),Show(..), Functor(..), fromIntegral, all,id,not,(.),(||),snd,Foldable)
-import Data.List (intercalate,and,filter)
+import Prelude hiding (Num(..), sum)
+-- import Data.List (intercalate,and,filter)
 import Algebra.Classes
 import qualified Data.Map as M
-import Data.Function (on)
-import Data.Monoid
-import Control.Applicative
-import Data.Traversable
+-- import Data.Function (on)
+-- import Data.Monoid
+-- import Control.Applicative
+-- import Data.Traversable
 
 -- | Normalised linear combinations as maps from variables to
 -- coefficients (zero coefficient never present in the map)
 newtype LinComb x c = LinComb (M.Map x c)
-  deriving (Functor,AbelianAdditive,Group,Eq,Ord,Show,Traversable,Foldable)
+  deriving (Functor,AbelianAdditive,Eq,Ord,Show,Traversable,Foldable)
 deriving instance {-# Overlappable #-} Scalable s a => Scalable s (LinComb k a)
 
 fromLinComb :: LinComb x c -> M.Map x c
@@ -35,6 +35,9 @@ instance (AbelianAdditive c,DecidableZero c,Ord e) => Additive (LinComb e c) whe
   zero = LinComb zero
   LinComb x + LinComb y = normalise (LinComb (x+y))
 
+instance (AbelianAdditive c,Group c,DecidableZero c,Ord e) => Group (LinComb e c) where
+  negate = fmap negate
+  LinComb x - LinComb y = normalise (LinComb (x-y))
 
 -- Alternative instances for non-normalised version:
 -- instance (Eq e, Eq c, Additive c) => Eq (LinComb e c) where
