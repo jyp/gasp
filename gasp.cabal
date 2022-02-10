@@ -31,7 +31,5 @@ library
        Algebra.Morphism.Affine
        Algebra.Morphism.Exponential
        Algebra.Morphism.LinComb
-       Algebra.Morphism.Polynomial.Dense
-       Algebra.Morphism.Polynomial.Multi
        Algebra.Morphism.Ratio
 
