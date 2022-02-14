@@ -89,6 +89,28 @@ laws_additive = product [property (law_zero_plus @a)
                         ,property (law_plus_assoc @a)
                         ,property (law_times @a)]
 
+
+law_one_mul :: forall a. (Multiplicative a, TestEqual a) => a -> Property
+law_one_mul n = nameLaw "one/mul" (one * n =.= n)
+law_mul_one :: (Multiplicative a, TestEqual a) => a -> Property
+law_mul_one n = nameLaw "mul/one" (n * one =.= n)
+law_mul_assoc :: (Multiplicative a, TestEqual a) => a -> a -> a -> Property
+law_mul_assoc m n o = nameLaw "mul/assoc" (n * (m * o) =.= (n * m) * o)
+law_exp_pos :: (TestEqual a, Multiplicative a) => Positive Integer -> a -> Property
+law_exp_pos (Positive m) n = nameLaw "positive exponent" (n ^+ m =.= positiveExponentDefault n m)
+
+laws_multiplicative :: forall a. (Multiplicative a, TestEqual a) => Property
+laws_multiplicative = product [property (law_one_mul @a)
+                              ,property (law_mul_one @a)
+                              ,property (law_mul_assoc @a)
+                              ,property (law_exp_pos @a)]
+
+law_fromInteger :: forall a. (TestEqual a, Ring a) => Integer -> Property
+law_fromInteger m = nameLaw "fromInteger" (fromInteger @a m =.= fromIntegerDefault m)
+
+laws_ring :: forall a. (Ring a, TestEqual a) => Property
+laws_ring = product [property (law_fromInteger @a), laws_additive @a, laws_module @a @a, laws_multiplicative @a]
+
 instance TestEqual Int where (=.=) = (===)
 
 sum :: (Foldable t, Additive a) => t a -> a
@@ -341,13 +363,14 @@ class Multiplicative a where
   (*) :: a -> a -> a
   one :: a
   (^+) :: a -> Natural -> a
+  (^+) = positiveExponentDefault
 
-  x0 ^+ n0 = if n0 < 0 then Prelude.error "Algebra.Classes.^+: negative exponent" else go x0 n0
+positiveExponentDefault :: Multiplicative a => a -> Natural -> a
+positiveExponentDefault x0 n0 = if n0 < 0 then Prelude.error "Algebra.Classes.^+: negative exponent" else go x0 n0
     where go _ 0 = one
           go x n = if r == 0 then y * y else x * y * y
             where (m,r) = n `Prelude.divMod` 2
                   y = go x m
-
 
 product :: (Multiplicative a, Foldable f) => f a -> a
 product xs = fromProduct (foldMap Product xs)
