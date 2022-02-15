@@ -7,7 +7,7 @@
 module Algebra.Classes where
 
 import Prelude (Int,Integer,Float,Double, (==), Monoid(..), Ord(..), Ordering(..), Foldable,
-                foldMap, (||), (&&),
+                foldMap, (||), (&&), ($),
                  Real(..), Enum(..), snd, Rational, Functor(..), Eq(..), Bool(..), Semigroup(..), Show(..), uncurry, otherwise)
 
 import qualified Prelude
@@ -96,8 +96,10 @@ law_mul_one :: (Multiplicative a, TestEqual a) => a -> Property
 law_mul_one n = nameLaw "mul/one" (n * one =.= n)
 law_mul_assoc :: (Multiplicative a, TestEqual a) => a -> a -> a -> Property
 law_mul_assoc m n o = nameLaw "mul/assoc" (n * (m * o) =.= (n * m) * o)
-law_exp_pos :: (TestEqual a, Multiplicative a) => Positive Integer -> a -> Property
-law_exp_pos (Positive m) n = nameLaw "positive exponent" (n ^+ m =.= positiveExponentDefault n m)
+law_exp_pos :: (TestEqual a, Multiplicative a) => a -> Property
+law_exp_pos n = nameLaw "positive exponent" $ do
+  m <- choose (0,5) -- for dense polynomials, elevating to a large power can be very expensive.
+  pure (n ^+ m =.= positiveExponentDefault n m)
 
 laws_multiplicative :: forall a. (Multiplicative a, TestEqual a) => Property
 laws_multiplicative = product [property (law_one_mul @a)
@@ -109,7 +111,10 @@ law_fromInteger :: forall a. (TestEqual a, Ring a) => Integer -> Property
 law_fromInteger m = nameLaw "fromInteger" (fromInteger @a m =.= fromIntegerDefault m)
 
 laws_ring :: forall a. (Ring a, TestEqual a) => Property
-laws_ring = product [property (law_fromInteger @a), laws_additive @a, laws_module @a @a, laws_multiplicative @a]
+laws_ring = product [property (law_fromInteger @a)
+                    ,laws_additive @a
+                    ,laws_module @a @a
+                    ,laws_multiplicative @a]
 
 instance TestEqual Int where (=.=) = (===)
 
