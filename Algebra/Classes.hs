@@ -123,6 +123,12 @@ laws_ring = product [property (law_fromInteger @a)
                     ,laws_multiplicative @a]
 
 instance TestEqual Int where (=.=) = (===)
+instance TestEqual Double where
+  x =.= y = counterexample (show x <> interpret res <> show y) res
+   where
+    res = (Prelude.abs (x-y) < 0.01)
+    interpret True  = " == "  
+    interpret False = " /= "
 
 sum :: (Foldable t, Additive a) => t a -> a
 sum xs = fromSum (foldMap Sum xs)
