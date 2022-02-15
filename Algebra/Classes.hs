@@ -62,6 +62,12 @@ class Additive a where
 class (Arbitrary a, Show a) => TestEqual a where
   (=.=) :: a -> a -> Property
 
+law_refl :: TestEqual a => a -> Property
+law_refl x = nameLaw "=.=-reflexive" (x =.= x)
+
+laws_testEqual :: forall a. TestEqual a => Property
+laws_testEqual = property (law_refl @a)
+
 infix 0 =.=
 
 instance Multiplicative Property where
