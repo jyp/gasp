@@ -32,4 +32,5 @@ library
        Algebra.Morphism.Exponential
        Algebra.Morphism.LinComb
        Algebra.Morphism.Ratio
+       Algebra.Morphism.Pointwise
 
