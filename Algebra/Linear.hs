@@ -120,6 +120,8 @@ instance (Applicative f,AbelianAdditive a) => AbelianAdditive (Euclid f a) where
 instance (Applicative f,Group a) => Group (Euclid f a) where
   negate x = negate <$> x
   x - y = (-) <$> x <*> y
+instance (Functor f, Scalable s a) => Scalable s (Euclid f a) where
+  s *^ Euclid t = Euclid (((s*^) <$>) t)
 
 pureMat :: (Applicative v, Applicative w) => s -> Mat s v w
 pureMat x = Mat (pure (pure x))
