@@ -33,7 +33,7 @@ import Data.Traversable
 import Control.Monad.State
 import Algebra.Category
 
-type VectorSpace scalar a = (Field scalar, Module scalar a, Group a)
+type VectorSpace scalar a = (Scalable scalar a, Field scalar, Module scalar a, Group a)
 -- Because of the existence of bases, vector spaces can always be made representable (Traversable, Applicative) functors.
 -- So we'd be better off using the following definition:
 
@@ -199,10 +199,8 @@ pattern Mat3x3 a b c d e f g h i = Mat (V3 (V3 a d g)
                                            (V3 b e h)
                                            (V3 c f i))
 
-
 (<+>) :: (Applicative f, Additive b) => f b -> f b -> f b
 u <+> v = (+) <$> u <*> v
-
 
 matVecMul :: forall s v w. (Ring s, Foldable v,Applicative v,Applicative w) => Mat s v w -> v s -> w s
 matVecMul (Mat m) x = foldr (<+>) (pure zero) ((*<) <$> x <*> m) -- If GHC gets fixed: use VectorR constraint instead of Applicative, and add instead of foldr.
