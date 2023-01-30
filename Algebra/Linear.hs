@@ -33,7 +33,7 @@ import Data.Traversable
 import Control.Monad.State
 import Algebra.Category
 
-type VectorSpace scalar a = (Scalable scalar a, Field scalar, Module scalar a, Group a)
+type VectorSpace scalar a = (Field scalar, Module scalar a)
 -- Because of the existence of bases, vector spaces can always be made representable (Traversable, Applicative) functors.
 -- So we'd be better off using the following definition:
 
