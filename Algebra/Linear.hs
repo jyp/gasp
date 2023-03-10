@@ -33,15 +33,17 @@ import Data.Traversable
 import Control.Monad.State
 import Algebra.Category
 
-type VectorSpace scalar a = (Field scalar, Module scalar a)
+type VectorSpace scalar a = (Field scalar, Module scalar a, Group a)
 -- Because of the existence of bases, vector spaces can always be made representable (Traversable, Applicative) functors.
 -- So we'd be better off using the following definition:
 
 -- | Representation of vector as traversable functor
-type VectorR v = (Applicative v,Traversable v)
+class (Applicative v,Traversable v) => VectorR v
+instance (Applicative v,Traversable v) => VectorR v
+  
 -- ... but this is missing the link with *^ for module.  We should be
--- able to add forall s. PreRing s => Module s (v s), but GHC does not
--- like it. (In fact, QuantifiedConstraints is very buggy in ghc 8.6)
+-- able to add forall s. PreRing s => Module s (v s), but this creates
+-- problems when defining instances.
 
 class VectorR v => InnerProdSpace v where
   inner :: Field s => v s -> v s -> s
@@ -183,7 +185,7 @@ instance (Applicative w, Applicative v) => Applicative (Flat w v) where
 
 
 instance Ring s => Category (Mat s) where
-  type Con v = VectorR v
+  type Obj (Mat s) = VectorR
   (.) = matMul
   id = identity
 
@@ -217,20 +219,20 @@ crossProductMatrix (V3 a1 a2 a3) = Mat3x3 zero  (-a3) a2
                                           a3    zero  (-a1)
                                           (-a2) a1    zero
 
--- | Tensor product
+-- | Outer product
 (⊗) :: (Applicative v, Applicative w, Multiplicative s)
     => w s -> v s -> Mat s w v
-v1 ⊗ v2 = tensorWith (*) v2 v1
+v1 ⊗ v2 = outerWith (*) v2 v1
 
-tensorWith :: (Applicative v, Applicative w)
+outerWith :: (Applicative v, Applicative w)
            => (s -> t -> u) -> w s -> v t -> Mat u v w
-tensorWith f v1 v2 = matFlat (f <$> Flat (pure v1) <*> Flat (pure <$> v2))
+outerWith f v1 v2 = matFlat (f <$> Flat (pure v1) <*> Flat (pure <$> v2))
 
 identity :: Traversable v => Ring s => Applicative v => SqMat v s
-identity = tensorWith (\x y -> if x == y then one else zero) index index
+identity = outerWith (\x y -> if x == y then one else zero) index index
 
 diagonal :: Traversable v => Ring s => Applicative v => v s -> SqMat v s
-diagonal v = tensorWith (\x (y,a) -> if x == y then a else zero) index ((,) <$> index <*> v)
+diagonal v = outerWith (\x (y,a) -> if x == y then a else zero) index ((,) <$> index <*> v)
 
 -- | 3d rotation around given axis
 rotation3d :: Transcendental a => a -> V3 a -> Mat3x3 a

@@ -1,3 +1,6 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE PolyKinds #-}
@@ -13,13 +16,18 @@ import Data.Kind (Constraint, Type)
 -- 'id' '.' f  =  f  -- (left identity)
 -- f '.' (g '.' h)  =  (f '.' g) '.' h  -- (associativity)
 -- @
+
+type Trivial :: k -> Constraint
+class Trivial x
+instance Trivial x
+
 class Category (cat :: k -> k -> Type) where
-  type Con (a :: k) :: Constraint
-  type Con a = ()
-  (.) :: (Con a, Con b, Con c) => b `cat` c -> a `cat` b -> a `cat` c
-  id :: Con a => a `cat` a
+  type Obj cat :: k -> Constraint
+  (.)      :: (Obj cat a, Obj cat b, Obj cat c) => b `cat` c -> a `cat` b -> a `cat` c
+  id :: Obj cat a => a `cat` a
 
 instance Category (->) where
+  type Obj (->) = Trivial
   (.) = (Prelude..)
   id = Prelude.id
 
