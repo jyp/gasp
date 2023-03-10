@@ -1,5 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFoldable #-}
@@ -26,20 +26,39 @@
 module Algebra.Linear where
 
 import Algebra.Classes
-import Prelude (Show(..),Eq(..),Int,fst,($),Ord,)
+import Prelude (Show(..),Eq(..),Int,fst,($),Ord,Maybe(..),Bool(..),(&&),error)
 import Control.Applicative
 import Data.Foldable hiding (sum,product)
 import Data.Traversable
 import Control.Monad.State
 import Algebra.Category
+import Algebra.Types
+import Data.Constraint
 
 type VectorSpace scalar a = (Field scalar, Module scalar a, Group a)
 -- Because of the existence of bases, vector spaces can always be made representable (Traversable, Applicative) functors.
 -- So we'd be better off using the following definition:
 
 -- | Representation of vector as traversable functor
-class (Applicative v,Traversable v) => VectorR v
-instance (Applicative v,Traversable v) => VectorR v
+class (Eq (IndexType v),Applicative v,Traversable v) => VectorR v where
+  type IndexType v
+  tabulate :: (IndexType v -> x) -> v x
+  vectorSplit :: (v ~ (f ⊗ g)) => Dict (VectorR f, VectorR g)
+
+instance (VectorR v, VectorR w) => VectorR (v ⊗ w) where
+  vectorSplit = Dict
+  type IndexType (v ⊗ w) = IndexType v ⊗ IndexType w
+  tabulate f = Comp (tabulate (\i -> tabulate (\j -> f (i `Pair` j))))
+
+instance (VectorR One) where
+  vectorSplit = error "vectorSplit: One: panic"
+  tabulate f = FunctorUnit (f Unit)
+  type IndexType One = One
+
+instance ProdObj VectorR where
+  objprod = Dict
+  objfstsnd = vectorSplit
+  objunit = Dict
   
 -- ... but this is missing the link with *^ for module.  We should be
 -- able to add forall s. PreRing s => Module s (v s), but this creates
@@ -57,6 +76,16 @@ instance Applicative VZero where
   VZero <*> VZero = VZero
 
 data VNext v a = VNext !(v a) !a deriving (Functor,Foldable,Traversable,Show,Eq,Ord)
+
+instance VectorR VZero where
+  type IndexType VZero = Zero
+  tabulate _ = VZero
+  vectorSplit = error "vectorSplit: Zero: panic"
+instance VectorR a => VectorR (VNext a) where
+  type IndexType (VNext a) = Maybe (IndexType a)
+  tabulate f = VNext (tabulate (f . Just)) (f Nothing)
+  vectorSplit = error "vectorSplit: VNext: panic"
+  
 
 data V f a where
   V0 :: V VZero a
@@ -144,6 +173,11 @@ instance (Functor f, Functor g,Scalable s a) => Scalable s (Mat a f g) where
 (⊙) :: Applicative v => Multiplicative s => v s -> v s -> v s
 x ⊙ y = (*) <$> x <*> y
 
+instance (VectorR f) => VectorR (Euclid f) where
+  vectorSplit = error "vectorSplit: Euclid: panic"
+  tabulate f = Euclid (tabulate f)
+  type IndexType (Euclid f) = IndexType f
+  
 instance (VectorR f) => InnerProdSpace (Euclid f) where
   inner x y = sum (x ⊙ y) -- fixme
 
@@ -187,7 +221,23 @@ instance (Applicative w, Applicative v) => Applicative (Flat w v) where
 instance Ring s => Category (Mat s) where
   type Obj (Mat s) = VectorR
   (.) = matMul
-  id = identity
+  id = Mat (tabulate (\i -> (tabulate (\j -> indicate (i == j)))))
+
+instance Ring s => Monoidal (Mat s) where
+  assoc = Mat (tabulate (\((i `Pair` j) `Pair` k) -> tabulate (\(i' `Pair` (j' `Pair` k')) -> indicate (i == i' && j == j' && k == k'))))
+  assoc' = Mat (tabulate (\(i `Pair` (j `Pair` k)) -> tabulate (\((i' `Pair` j') `Pair` k') -> indicate (i == i' && j == j' && k == k'))))
+  unitorR = Mat (tabulate (\i -> tabulate (\(i' `Pair` _) -> indicate (i == i'))))
+  unitorR' = Mat (tabulate (\(i `Pair` _) -> tabulate (\(i') -> indicate (i == i'))))
+  Mat f ⊗ Mat g = Mat (Comp (fmap (\x -> fmap Comp  (fmap (\y -> liftA2 (liftA2 (*)) (fmap pure x) (pure y)) g)) f))
+
+indicate :: Ring x => Bool -> x
+indicate = \case
+  True -> one
+  False -> zero
+
+instance Ring s => SMC (Mat s) where
+  swap = Mat (tabulate (\(i `Pair` j) -> tabulate (\(j' `Pair` i') -> indicate (i == i' && j == j'))))
+
 
 
 type Mat3x3 s = SqMat V3 s
@@ -242,11 +292,12 @@ rotation3d θ u = cos θ *^ identity +
                  (1 - cos θ) *^ (u Algebra.Linear.⊗ u)
 
 -- | 3d rotation mapping the direction of 'from' to that of 'to'
-rotationFromTo :: (Algebraic a)
+rotationFromTo :: forall a. (Algebraic a)
                => V3 a -> V3 a -> Mat3x3 a
 rotationFromTo from to = c *^ identity + s *^ crossProductMatrix v + (1-c) *^ (v Algebra.Linear.⊗ v)
   where y = to
         x = from
+        v :: V3 a
         v = x × y -- axis of rotation
         c = inner x y -- cos of angle
         s = norm v -- sin of angle
@@ -271,11 +322,11 @@ matMul a (Mat b) = Mat (matVecMul a <$> b)
 -- The group of Orthogonal matrices, using "Multiplicative" for respecting conventions a bit better
 newtype OrthoMat v s = OrthoMat (SqMat v s)
 
-instance (Ring s, Applicative v, Traversable v) => Multiplicative (OrthoMat v s) where
+instance (Ring s, VectorR v) => Multiplicative (OrthoMat v s) where
   one = OrthoMat id
   OrthoMat m * OrthoMat n = OrthoMat (m . n)
 
-instance (Ring s, Applicative v, Traversable v) => Division (OrthoMat v s) where
+instance (Ring s, VectorR v) => Division (OrthoMat v s) where
   recip (OrthoMat m) = OrthoMat (transpose m)
 
 
