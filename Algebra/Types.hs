@@ -22,7 +22,7 @@ instance AlgebraicKind Type where
   data x ⊕ y = Inj1 x | Inj2 y deriving (Eq,Ord)
   data x ⊗ y = Pair {π1 :: x, π2 :: y} deriving (Eq,Ord)
   data Dual x = DualType x deriving (Eq,Ord)
-  data One = One deriving (Eq,Ord)
+  data One = Unit deriving (Eq,Ord)
   data Zero deriving (Eq,Ord)
 
 
@@ -31,10 +31,14 @@ instance AlgebraicKind Type where
 instance AlgebraicKind (Type -> Type) where
   data (f ⊗ g) x = Comp {fromComp :: (f (g x))} deriving (Foldable, Traversable, Functor)
   data (f ⊕ g) x = FunctorProd (f x) (g x) deriving (Foldable, Traversable, Functor)
-  data One x = FunctorOne x deriving (Foldable, Traversable, Functor)
+  data One x = FunctorUnit x deriving (Foldable, Traversable, Functor)
   data Dual f x = FunctorDual {fromFunctorDual :: f x} deriving (Foldable, Traversable, Functor)
   data Zero x = Const {fromConst :: x} deriving (Foldable, Traversable, Functor)
 
+instance Applicative One where
+  pure = FunctorUnit
+  FunctorUnit f <*> FunctorUnit x = FunctorUnit (f x)
+  
 
 instance (Applicative f, Applicative g) => Applicative (f ⊗ g) where
   Comp f <*> Comp x = Comp ((fmap (<*>) f) <*> x)
