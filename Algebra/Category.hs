@@ -76,6 +76,12 @@ class (ProdObj (Obj cat), Category cat) => Monoidal (cat :: k -> k -> Type) wher
      \\ objprod @(Obj cat) @One @a
      \\ objunit @(Obj cat)
 
+  default unitorL' :: forall a. (SMC cat, Obj cat a) => (One ⊗ a) `cat` a 
+  unitorL' = unitorR' ∘ swap
+     \\ objprod @(Obj cat) @a @One
+     \\ objprod @(Obj cat) @One @a
+     \\ objunit @(Obj cat)
+
 
 class Monoidal cat => SMC cat where
   swap     :: (Obj cat a, Obj cat b) => (a ⊗ b) `cat` (b ⊗ a)
