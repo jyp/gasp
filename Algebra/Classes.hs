@@ -168,6 +168,10 @@ instance Additive Double where
   zero = 0
   times n x = Prelude.fromIntegral n * x
 
+instance Additive Bool where
+  (+) = (Prelude.||)
+  zero = False
+
 instance Additive Float where
   (+) = (Prelude.+)
   zero = 0
@@ -225,6 +229,7 @@ laws_abelian_additive = laws_additive @a .&&. product [property (law_plus_comm @
 instance AbelianAdditive Integer
 instance AbelianAdditive CInt
 instance AbelianAdditive Int
+instance AbelianAdditive Bool
 instance AbelianAdditive Double
 instance AbelianAdditive Float
 instance (Ord k,AbelianAdditive v) => AbelianAdditive (Map k v)
@@ -432,6 +437,9 @@ instance Multiplicative Float where
   one = 1
   (^+) = (Prelude.^)
 
+instance Multiplicative Bool where
+  (*) = (Prelude.&&)
+  one = True
 
 
 type SemiRing a = (Multiplicative a, AbelianAdditive a)
