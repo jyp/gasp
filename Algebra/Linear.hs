@@ -189,6 +189,7 @@ instance Ring s => Category (Mat s) where
   (.) = matMul
   id = identity
 
+
 type Mat3x3 s = SqMat V3 s
 type Mat2x2 s = SqMat V2 s
 
@@ -238,12 +239,12 @@ diagonal v = outerWith (\x (y,a) -> if x == y then a else zero) index ((,) <$> i
 rotation3d :: Transcendental a => a -> V3 a -> Mat3x3 a
 rotation3d θ u = cos θ *^ identity +
                  sin θ *^ crossProductMatrix u +
-                 (1 - cos θ) *^ (u ⊗ u)
+                 (1 - cos θ) *^ (u Algebra.Linear.⊗ u)
 
 -- | 3d rotation mapping the direction of 'from' to that of 'to'
 rotationFromTo :: (Algebraic a)
                => V3 a -> V3 a -> Mat3x3 a
-rotationFromTo from to = c *^ identity + s *^ crossProductMatrix v + (1-c) *^ (v ⊗ v)
+rotationFromTo from to = c *^ identity + s *^ crossProductMatrix v + (1-c) *^ (v Algebra.Linear.⊗ v)
   where y = to
         x = from
         v = x × y -- axis of rotation
