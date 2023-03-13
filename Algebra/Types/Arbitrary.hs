@@ -48,3 +48,6 @@ arbitraryF2 r1 r2 g p = do
   Some1 a' <- r2
   b <- g a a'
   return (p b)
+
+arbitraryMorphism = arbitraryF2 (arbitrary :: Gen (Some1 Repr)) (arbitrary :: Gen (Some1 Repr)) (\_ _ -> arbitrary)
+  
