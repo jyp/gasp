@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ConstraintKinds #-}
@@ -26,7 +27,7 @@
 module Algebra.Linear where
 
 import Algebra.Classes
-import Prelude (Show(..),Eq(..),Int,fst,($),Ord,error,flip)
+import Prelude (Show(..),Eq(..),($),Ord,error,flip)
 import Control.Applicative
 import Data.Foldable hiding (sum,product)
 import Data.Traversable
@@ -35,37 +36,28 @@ import Algebra.Category
 import Algebra.Types
 import Data.Constraint
 import Algebra.Category.Relation
+import Data.Functor.Rep
+import Data.Distributive
 
 type VectorSpace scalar a = (Field scalar, Module scalar a, Group a)
 -- Because of the existence of bases, vector spaces can always be made representable (Traversable, Applicative) functors.
 -- So we'd be better off using the following definition:
 
 -- | Representation of vector as traversable functor
-class (Finite (IndexType v),Applicative v,Traversable v) => VectorR v where
-  type IndexType v
-  tabulate :: (IndexType v -> x) -> v x
-  vectorCut = error "vectorCut: not sum type"
-  vectorSplit = error "vectorSplit: not product type"
+class (Finite (Rep v),Representable v, Foldable v, Applicative v) => VectorR v where
   vectorSplit :: (v ~ (f ⊗ g)) => Dict (VectorR f, VectorR g)
+  vectorSplit = error "vectorSplit: not product type"
   vectorCut :: (v ~ (f ⊕ g)) => Dict (VectorR f, VectorR g)
+  vectorCut = error "vectorCut: not sum type"
 
 instance (VectorR v, VectorR w) => VectorR (v ⊗ w) where
   vectorSplit = Dict
-  type IndexType (v ⊗ w) = IndexType v ⊗ IndexType w
-  tabulate f = Comp (tabulate (\i -> tabulate (\j -> f (i `Pair` j))))
 
 instance (VectorR v, VectorR w) => VectorR (v ⊕ w) where
   vectorCut = Dict
-  type IndexType (v ⊕ w) = IndexType v ⊕ IndexType w
-  tabulate f = FunctorProd (tabulate (f . Inj1)) (tabulate (f . Inj2))
 
-instance (VectorR One) where
-  tabulate f = FunctorUnit (f Unit)
-  type IndexType One = One
-
-instance (VectorR Zero) where
-  tabulate _ = FunctorZero
-  type IndexType Zero = Zero
+instance (VectorR One)
+instance (VectorR Zero)
 
 instance SumObj VectorR where
   objsum = Dict
@@ -87,27 +79,22 @@ class VectorR v => InnerProdSpace v where
 --------------------------------------------------------------
 -- Construction of finite vectors
 
-data VZero a = VZero deriving (Functor,Foldable,Traversable,Show,Eq,Ord)
-instance Applicative VZero where
-  pure _ = VZero
-  VZero <*> VZero = VZero
+type VZero x = Zero x
 
-data VNext v a = VNext !(v a) !a deriving (Functor,Foldable,Traversable,Show,Eq,Ord)
+data VNext v a = VNext {vnextInit :: !(v a), vnextLast :: !a} deriving (Functor,Foldable,Traversable,Show,Eq,Ord)
 
-instance VectorR VZero where
-  type IndexType VZero = Zero
-  tabulate _ = VZero
-  vectorSplit = error "vectorSplit: Zero: panic"
-  vectorCut = error "vectorCut: Zero: panic"
-instance VectorR a => VectorR (VNext a) where
-  type IndexType (VNext a) = One ⊕ (IndexType a)
+instance Distributive v => Distributive (VNext v) where
+  collect f x = VNext (collect (vnextInit . f) x) (vnextLast . f <$> x)
+instance Representable a => Representable (VNext a) where
+  type Rep (VNext a) = One ⊕ (Rep a)
+  index (VNext xs x) = \case
+    Inj1 _ -> x
+    Inj2 i -> index xs i
   tabulate f = VNext (tabulate (f . Inj2)) (f (Inj1 Unit))
-  vectorSplit = error "vectorSplit: VNext: panic"
-  vectorCut = error "vectorCut: VNext: panic"
-  
+instance VectorR a => VectorR (VNext a) where
 
 data V f a where
-  V0 :: V VZero a
+  V0 :: V Zero a
   (:/) :: !(V f a) -> !a -> V (VNext f) a
 
 deriving instance Functor (V f)
@@ -119,14 +106,14 @@ deriving instance Eq a => Eq (V f a)
 class (Foldable f,Applicative f) => IsVec f where
   reifyVec :: f a -> V f a
 
-instance IsVec VZero where
-  reifyVec VZero = V0
+instance IsVec Zero where
+  reifyVec FunctorZero = V0
 
 instance IsVec f => IsVec (VNext f) where
   reifyVec (VNext xs x) = reifyVec xs :/ x
 
 fromV :: V f a -> f a
-fromV V0 = VZero
+fromV V0 = FunctorZero
 fromV (xs :/ x) = VNext (fromV xs) x
 
 instance IsVec f => Applicative (V f) where
@@ -138,12 +125,12 @@ instance Applicative v => Applicative (VNext v) where
   VNext fs f <*> VNext xs x = VNext (fs <*> xs) (f x)
 
 
-type V1' = VNext VZero
+type V1' = VNext Zero
 type V2' = VNext V1'
 type V3' = VNext V2'
 
 pattern V1' :: a -> V1' a
-pattern V1' x = VNext VZero x
+pattern V1' x = VNext FunctorZero x
 pattern V2' :: forall a. a -> a -> V2' a
 pattern V2' x y = VNext (V1' x) y
 pattern V3' :: forall a. a -> a -> a -> V3' a
@@ -191,10 +178,13 @@ instance (Functor f, Functor g,Scalable s a) => Scalable s (Mat a f g) where
 (⊙) :: Applicative v => Multiplicative s => v s -> v s -> v s
 x ⊙ y = (*) <$> x <*> y
 
-instance VectorR f => VectorR (Euclid f) where
+instance Distributive f => Distributive (Euclid f) where
+  collect f = Euclid . collect (fromEuclid . f)
+instance Representable f => Representable (Euclid f) where
+  type Rep (Euclid f) = Rep f
+  index (Euclid x) = index x
   tabulate f = Euclid (tabulate f)
-  type IndexType (Euclid f) = IndexType f
-  
+instance VectorR f => VectorR (Euclid f)
 instance (VectorR f) => InnerProdSpace (Euclid f) where
   inner x y = sum (x ⊙ y) -- fixme
 
@@ -213,10 +203,6 @@ normalize v = recip (norm v) *^ v
 -- | Cross product in 3 dimensions https://en.wikipedia.org/wiki/Cross_product
 (×) :: Ring a => V3 a -> V3 a -> V3 a
 (V3 a1 a2 a3) × (V3 b1 b2 b3) = V3 (a2*b3 - a3*b2)  (negate (a1*b3 - a3*b1)) (a1*b2 - a2*b1)
-
-index :: Applicative v => Traversable v => v Int
-index = fst (runState (sequenceA (pure increment)) zero)
-  where increment = do x <- get; put (x+1); return x
 
 type SqMat v s = Mat s v v
 
@@ -240,9 +226,9 @@ instance Ring s => Category (Mat s) where
   (.) = matMul
   id = fromRel id
 
-fromRel :: (VectorR a, VectorR b) => Rel s (IndexType a) (IndexType b) -> Mat s a b
+fromRel :: (VectorR a, VectorR b) => Rel s (Rep a) (Rep b) -> Mat s a b
 fromRel (Rel f) = Mat (tabulate (\i -> tabulate (\j -> f i j)))
-
+  
 instance Ring s => Monoidal (Mat s) where
   assoc = fromRel assoc
   assoc_ = fromRel assoc_
@@ -289,12 +275,6 @@ pattern Mat3x3 a b c d e f g h i = Mat (V3 (V3 a d g)
                                            (V3 b e h)
                                            (V3 c f i))
 
-(<+>) :: (Applicative f, Additive b) => f b -> f b -> f b
-u <+> v = (+) <$> u <*> v
-
-matVecMul :: forall s v w. (Ring s, Foldable v,Applicative v,Applicative w) => Mat s v w -> v s -> w s
-matVecMul (Mat m) x = foldr (<+>) (pure zero) ((*<) <$> x <*> m) -- If GHC gets fixed: use VectorR constraint instead of Applicative, and add instead of foldr.
-
 
 rotation2d :: Transcendental a => a -> Mat2x2 a
 rotation2d θ = transpose $ Mat $ V2 (V2 (cos θ) (-sin θ))
@@ -303,36 +283,37 @@ rotation2d θ = transpose $ Mat $ V2 (V2 (cos θ) (-sin θ))
 -- >>> rotation2d (pi/2)
 -- Mat {fromMat = V2' (V2' 6.123233995736766e-17 (-1.0)) (V2' 1.0 6.123233995736766e-17)}
 
+
 crossProductMatrix :: Group a => V3 a -> Mat3x3 a
 crossProductMatrix (V3 a1 a2 a3) = Mat3x3 zero  (-a3) a2
                                           a3    zero  (-a1)
                                           (-a2) a1    zero
 
--- | Outer product
-(⊗) :: (Applicative v, Applicative w, Multiplicative s)
-    => w s -> v s -> Mat s w v
-v1 ⊗ v2 = outerWith (*) v2 v1
-
 outerWith :: (Applicative v, Applicative w)
            => (s -> t -> u) -> w s -> v t -> Mat u v w
 outerWith f v1 v2 = matFlat (f <$> Flat (pure v1) <*> Flat (pure <$> v2))
 
-identity :: Traversable v => Ring s => Applicative v => SqMat v s
-identity = outerWith (\x y -> if x == y then one else zero) index index
 
-diagonal :: Traversable v => Ring s => Applicative v => v s -> SqMat v s
-diagonal v = outerWith (\x (y,a) -> if x == y then a else zero) index ((,) <$> index <*> v)
+-- | Outer product 
+outer :: (Applicative v, Applicative w, Multiplicative s)
+    => Euclid w s -> Euclid v s -> Mat s (Euclid w) (Euclid v)
+v1 `outer` v2 = outerWith (*) v2 v1
+
+
+diagonal :: Eq (Rep v) => Representable v => Ring s => Applicative v => v s -> SqMat v s
+diagonal v = outerWith (\x (y,a) -> if x == y then a else zero) (tabulate id) ((,) <$> (tabulate id) <*> v)
 
 -- | 3d rotation around given axis
 rotation3d :: Transcendental a => a -> V3 a -> Mat3x3 a
-rotation3d θ u = cos θ *^ identity +
+rotation3d θ u = cos θ *^ id +
                  sin θ *^ crossProductMatrix u +
-                 (1 - cos θ) *^ (u Algebra.Linear.⊗ u)
+                 (1 - cos θ) *^ (u `outer` u)
+
 
 -- | 3d rotation mapping the direction of 'from' to that of 'to'
 rotationFromTo :: forall a. (Algebraic a)
                => V3 a -> V3 a -> Mat3x3 a
-rotationFromTo from to = c *^ identity + s *^ crossProductMatrix v + (1-c) *^ (v Algebra.Linear.⊗ v)
+rotationFromTo from to = c *^ id + s *^ crossProductMatrix v + (1-c) *^ (v `outer` v)
   where y = to
         x = from
         v :: V3 a
@@ -343,31 +324,30 @@ rotationFromTo from to = c *^ identity + s *^ crossProductMatrix v + (1-c) *^ (v
 -- >>> let u = (V3 (1::Double) 0 0); v = (V3 0 1 1); in (rotationFromTo u v) `matVecMul` u
 -- Euclid {fromEuclid = VNext (VNext (VNext VZero 0.0) 1.4142135623730951) 1.4142135623730951}
 
--- | Transposition as traverse. Assumes "zippy" applicative instances
--- (so, fails for Data.Vector.Vector or List, which have set of choices semantics).
-transpose :: Applicative g => Traversable f => Mat a f g -> Mat a g f
-transpose = Mat . sequenceA . fromMat
+-- | Transposition as distribution
+transpose :: Functor f => Distributive g => Mat a f g -> Mat a g f
+transpose = Mat . distribute . fromMat
 
 instance Ring s => Dagger (Mat s) where
   dagger = transpose
 
-matMul :: (Traversable u, Ring s, Applicative w, Applicative v, Applicative u) => Mat s u w -> Mat s v u -> Mat s v w
+matMul :: (Foldable u, Ring s, Applicative w, Applicative v, Applicative u) => Mat s u w -> Mat s v u -> Mat s v w
 matMul a (Mat b) = Mat (matVecMul a <$> b)
 
 
+(<+>) :: (Applicative f, Additive b) => f b -> f b -> f b
+u <+> v = (+) <$> u <*> v
+
+matVecMul :: forall s v w. (Ring s, Foldable v,Applicative v,Applicative w) => Mat s v w -> v s -> w s
+matVecMul (Mat m) x = foldr (<+>) (pure zero) ((*<) <$> x <*> m)
+
 -- >>> let t1 = rotation2d (1::Double) in matMul (transpose t1) t1
 -- Mat {fromMat = VNext (VNext VZero (VNext (VNext VZero 1.0) 0.0)) (VNext (VNext VZero 0.0) 1.0)}
+prop_laws :: Property
+prop_laws = product [laws_testEqual @(BernsteinP V2' Double)
+                    ,laws_ring @(BernsteinP V2' Double)]
 
 
--- TODO: generalise to any dagger category
--- The group of Orthogonal matrices, using "Multiplicative" for respecting conventions a bit better
-newtype OrthoMat v s = OrthoMat (SqMat v s)
-
-instance (Ring s, VectorR v) => Multiplicative (OrthoMat v s) where
-  one = OrthoMat id
-  OrthoMat m * OrthoMat n = OrthoMat (m . n)
-
-instance (Ring s, VectorR v) => Division (OrthoMat v s) where
-  recip (OrthoMat m) = OrthoMat (transpose m)
-
-
+return []
+runTests :: IO Bool
+runTests = $quickCheckAll

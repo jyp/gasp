@@ -1,3 +1,6 @@
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
@@ -16,6 +19,9 @@ module Algebra.Types where
 
 import Data.Kind
 import Data.Constraint (Dict(..))
+import Data.Functor.Rep
+import Data.Distributive
+import GHC.Generics hiding (Rep)
 
 class AlgebraicKind k where
   data (a::k) ⊕ (b::k) :: k
@@ -24,15 +30,12 @@ class AlgebraicKind k where
   data One :: k
   data Zero :: k
 
-
 instance AlgebraicKind Type where
   data x ⊕ y = Inj1 x | Inj2 y deriving (Eq,Ord,Show)
   data x ⊗ y = Pair {π1 :: x, π2 :: y} deriving (Eq,Ord,Show)
   data Dual x = DualType x deriving (Eq,Ord,Show)
   data One = Unit deriving (Eq,Ord,Enum,Bounded,Show)
   data Zero deriving (Eq,Ord,Show)
-
-
 
 inhabitants :: Finite a => [a]
 inhabitants = [minBound..maxBound]
@@ -87,11 +90,40 @@ instance Finite Zero where
 -- | Algebraic structure for (Type -> Type) is in the exponential
 -- level Finitecause functor composition is generally where the action is.
 instance AlgebraicKind (Type -> Type) where
-  data (f ⊗ g) x = Comp {fromComp :: (f (g x))} deriving (Foldable, Traversable, Functor)
-  data (f ⊕ g) x = FunctorProd (f x) (g x) deriving (Foldable, Traversable, Functor)
-  data One x = FunctorUnit x deriving (Foldable, Traversable, Functor)
-  data Dual f x = FunctorDual {fromFunctorDual :: f x} deriving (Foldable, Traversable, Functor)
-  data Zero x = FunctorZero deriving (Foldable, Traversable, Functor)
+  data (f ⊗ g) x = Comp {fromComp :: (f (g x))} deriving (Foldable, Traversable, Functor, Generic1, Show, Eq)
+  data (f ⊕ g) x = FunctorProd {prodFst :: f x, prodSnd :: g x} deriving (Foldable, Traversable, Functor,Generic1, Show, Eq)
+  data One x = FunctorUnit {fromFunctorUnit :: x} deriving (Foldable, Traversable, Functor, Generic1, Show, Eq)
+  data Dual f x = FunctorDual {fromFunctorDual :: f x} deriving (Foldable, Traversable, Functor, Generic1, Show, Eq)
+  data Zero x = FunctorZero deriving (Foldable, Traversable, Functor, Generic1, Show, Eq)
+
+instance Distributive Zero where
+  distribute _ = FunctorZero
+instance Distributive One where
+  distribute = FunctorUnit . fmap fromFunctorUnit
+instance Representable Zero where
+  type Rep Zero = Zero
+  index FunctorZero = \case
+  tabulate _ = FunctorZero
+instance Representable One where
+  type Rep One = One
+  index (FunctorUnit x) _ = x
+  tabulate f = FunctorUnit (f Unit)
+instance (Distributive v, Distributive w) => Distributive (v ⊗ w) where
+  distribute = Comp . fmap distribute . distribute . fmap fromComp
+instance (Representable v, Representable w) => Representable (v ⊗ w) where
+  type Rep (v ⊗ w) = Rep v ⊗ Rep w
+  index (Comp f) (i `Pair` j) = (f `index` i) `index` j
+  tabulate f = Comp (tabulate (\i -> tabulate (\j -> f (i `Pair` j))))
+instance (Distributive v, Distributive w) => Distributive (v ⊕ w) where
+  collect f x = FunctorProd (collect (prodFst . f) x) (collect (prodSnd . f) x)
+instance (Representable v, Representable w) => Representable (v ⊕ w) where
+  type Rep (v ⊕ w) = Rep v ⊕ Rep w
+  index (FunctorProd x y) = \case
+    Inj1 i -> index x i
+    Inj2 i -> index y i
+  tabulate f = FunctorProd (tabulate (f . Inj1)) (tabulate (f . Inj2))
+
+
 
 instance Applicative One where
   pure = FunctorUnit

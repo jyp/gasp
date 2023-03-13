@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -17,18 +18,12 @@
 {-# LANGUAGE PolyKinds #-}
 module Algebra.Category where
 
+import Algebra.Classes (nameLaw, TestEqual(..), product)
 import Algebra.Types
 import qualified Prelude
 import Data.Kind
 import Data.Constraint
-
--- | A class for categories. Instances should satisfy the laws
---
--- @
--- f '.' 'id'  =  f  -- (right identity)
--- 'id' '.' f  =  f  -- (left identity)
--- f '.' (g '.' h)  =  (f '.' g) '.' h  -- (associativity)
--- @
+import Test.QuickCheck
 
 type Trivial :: k -> Constraint
 class Trivial x
@@ -63,10 +58,35 @@ type O4 k a b c d =
 
 infixr 9 .
 
+  
+-- | A class for categories. Instances should satisfy the laws
+--
+-- @
+-- f '.' 'id'  =  f  -- (right identity)
+-- 'id' '.' f  =  f  -- (left identity)
+-- f '.' (g '.' h)  =  (f '.' g) '.' h  -- (associativity)
+-- @
+
 class Category (cat :: k -> k -> Type) where
   type Obj (cat) :: k -> Constraint
   (.)      :: (Obj cat a, Obj cat b, Obj cat c) => b `cat` c -> a `cat` b -> a `cat` c
   id :: Obj cat a => a `cat` a
+
+
+law_id_comp :: forall {k} (f :: k -> k -> Type) a b. (Category f, TestEqual (f a b), O2 f a b) => f a b -> Property
+law_id_comp n = nameLaw "id/comp" (id . n =.= n)
+
+law_comp_id :: forall {k} (f :: k -> k -> Type) a b. (Category f, TestEqual (f a b), O2 f a b) => f a b -> Property
+law_comp_id n = nameLaw "comp/id" (n . id =.= n)
+
+law_comp_assoc :: forall {k} (f :: k -> k -> Type) a b c d. (Category f, TestEqual (f a d), O4 f a b c d) => f c d -> f b c -> f a b -> Property
+law_comp_assoc n m o = nameLaw "comp/assoc" (n . (m . o) =.= (n . m) . o)
+
+{-laws_category :: forall {k} (f :: k -> k -> Type). (forall a b. O2 f a b => Arbitrary (f a b), Category f, forall a b. TestEqual (f a b)) => Property
+laws_category = product [property (law_id_comp @f)
+                        ,property (law_comp_id @f)
+                        ,property (law_comp_assoc @f)]
+-}
 
 class Category cat => Dagger cat where
   dagger :: O2 cat a b => a `cat` b -> b `cat` a

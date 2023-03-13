@@ -23,6 +23,9 @@ library
   build-depends: binary
   build-depends: mtl
   build-depends: constraints
+  build-depends: distributive, adjunctions
+    -- for representable functors
+    
   build-depends: QuickCheck
 
   exposed-modules:
