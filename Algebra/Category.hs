@@ -90,20 +90,20 @@ class (ProdObj (Obj cat), Category cat) => Monoidal (cat :: k -> k -> Type) wher
   unitorL   :: (Obj cat a, Obj cat One) => a `cat` (One ⊗ a)
   unitorL_  :: (Obj cat a, Obj cat One) => (One ⊗ a) `cat` a
 
-  default unitorL :: forall a. (Symmetric cat, Obj cat a) => a `cat` (One ⊗ a)
+  default unitorL :: forall a. (Braided cat, Obj cat a) => a `cat` (One ⊗ a)
   unitorL = swap ∘ unitorR
      \\ objprod @(Obj cat) @a @One
      \\ objprod @(Obj cat) @One @a
      \\ objunit @(Obj cat)
 
-  default unitorL_ :: forall a. (Symmetric cat, Obj cat a) => (One ⊗ a) `cat` a 
+  default unitorL_ :: forall a. (Braided cat, Obj cat a) => (One ⊗ a) `cat` a 
   unitorL_ = unitorR_ ∘ swap
      \\ objprod @(Obj cat) @a @One
      \\ objprod @(Obj cat) @One @a
      \\ objunit @(Obj cat)
 
 
-class Monoidal cat => Symmetric cat where
+class Monoidal cat => Braided cat where
   swap     :: (Obj cat a, Obj cat b) => (a ⊗ b) `cat` (b ⊗ a)
 
 class Monoidal k => Cartesian k where
@@ -155,13 +155,13 @@ class (SumObj (Obj cat), Category cat) => Monoidal' (cat :: k -> k -> Type) wher
   unitorL'   :: (Obj cat a, Obj cat Zero) => a `cat` (Zero ⊕ a)
   unitorL_'  :: (Obj cat a, Obj cat Zero) => (Zero ⊕ a) `cat` a
 
-  default unitorL' :: forall a. (Symmetric' cat, Obj cat a) => a `cat` (Zero ⊕ a)
+  default unitorL' :: forall a. (Braided' cat, Obj cat a) => a `cat` (Zero ⊕ a)
   unitorL' = swap' ∘ unitorR'
      \\ objsum @(Obj cat) @a @Zero
      \\ objsum @(Obj cat) @Zero @a
      \\ objzero @(Obj cat)
 
-  default unitorL_' :: forall a. (Symmetric' cat, Obj cat a) => (Zero ⊕ a) `cat` a 
+  default unitorL_' :: forall a. (Braided' cat, Obj cat a) => (Zero ⊕ a) `cat` a 
   unitorL_' = unitorR_' ∘ swap' 
      \\ objsum @(Obj cat) @a @Zero
      \\ objsum @(Obj cat) @Zero @a
@@ -169,7 +169,7 @@ class (SumObj (Obj cat), Category cat) => Monoidal' (cat :: k -> k -> Type) wher
 
 
 
-class Monoidal' cat => Symmetric' cat where
+class Monoidal' cat => Braided' cat where
   swap'     :: (Obj cat a, Obj cat b) => (a ⊕ b) `cat` (b ⊕ a)
 
 type Cartesian' :: forall {k}. (k -> k -> Type) -> Constraint
@@ -224,7 +224,7 @@ instance Monoidal (->) where
   unitorR x = (x `Pair` Unit)
   unitorR_ (x `Pair` Unit) = x
 
-instance Symmetric (->) where
+instance Braided (->) where
   swap (x `Pair` y) = (y `Pair` x)
 
 instance Monoidal' (->) where
@@ -244,7 +244,7 @@ instance Monoidal' (->) where
     Inj1 x -> x
     Inj2 x -> case x of
 
-instance Symmetric' (->) where
+instance Braided' (->) where
   swap' = \case
     Inj1 x -> Inj2 x
     Inj2 x -> Inj1 x
