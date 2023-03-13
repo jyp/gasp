@@ -15,6 +15,7 @@
 module Algebra.Types where
 
 import Data.Kind
+import Data.Constraint (Dict(..))
 
 class AlgebraicKind k where
   data (a::k) ⊕ (b::k) :: k
@@ -39,6 +40,11 @@ inhabitants = [minBound..maxBound]
 class (Enum a, Bounded a) => Finite a where
   typeSize :: Int
   typeSize = fromEnum (maxBound @a) - fromEnum (minBound @a) + 1
+  finiteFstsnd :: forall α b. (a ~ (α⊗b)) => Dict (Finite α, Finite b)
+  finiteFstsnd = error "finiteFstsnd: not a product type"
+  finiteLeftRight :: forall α b. (a ~ (α⊕b)) => Dict (Finite α, Finite b)
+  finiteLeftRight = error "finiteFstsnd: not a sum type"
+
 
 fromZero :: forall a. Finite a => Int -> a
 fromZero i = toEnum (i + fromEnum (minBound @a))
@@ -54,11 +60,13 @@ instance (Finite x, Finite y) => Enum (x⊕y) where
      Inj2 x -> fromEnum x + typeSize @x
 
 instance (Finite x, Finite y) => Finite (x⊕y) where
+  finiteLeftRight = Dict
 instance (Finite x, Finite y) => Enum (x⊗y) where
   toEnum k = Pair (toEnum i) (toEnum j)
     where (j,i) = k `divMod` typeSize @x
   fromEnum (Pair x y) = fromEnum x + fromEnum y * (typeSize @x)
 instance (Finite x, Finite y) => Finite (x⊗y) where
+  finiteFstsnd = Dict
 instance Finite Bool
 instance Finite One
 

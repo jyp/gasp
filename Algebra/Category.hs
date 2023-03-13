@@ -44,6 +44,16 @@ instance SumObj Trivial where
   objleftright = Dict
   objzero = Dict
 
+instance ProdObj Finite where
+  objprod = Dict
+  objfstsnd = finiteFstsnd
+  objunit = Dict
+
+instance SumObj Finite where
+  objsum = Dict
+  objleftright = finiteLeftRight
+  objzero = Dict
+
 
 type O2 k a b = (Obj k a, Obj k b)
 type O3 k a b c =
