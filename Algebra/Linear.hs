@@ -34,6 +34,7 @@ import Control.Monad.State
 import Algebra.Category
 import Algebra.Types
 import Data.Constraint
+import Algebra.Category.Relation
 
 type VectorSpace scalar a = (Field scalar, Module scalar a, Group a)
 -- Because of the existence of bases, vector spaces can always be made representable (Traversable, Applicative) functors.
@@ -222,6 +223,9 @@ instance Ring s => Category (Mat s) where
   type Obj (Mat s) = VectorR
   (.) = matMul
   id = Mat (tabulate (\i -> (tabulate (\j -> indicate (i == j)))))
+
+fromRel :: (VectorR a, VectorR b) => Rel s (IndexType a) (IndexType b) -> Mat s a b
+fromRel (Rel f) = Mat (tabulate (\i -> tabulate (\j -> f i j)))
 
 instance Ring s => Monoidal (Mat s) where
   assoc = Mat (tabulate (\((i `Pair` j) `Pair` k) -> tabulate (\(i' `Pair` (j' `Pair` k')) -> indicate (i == i' && j == j' && k == k'))))

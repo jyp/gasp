@@ -37,7 +37,7 @@ instance AlgebraicKind Type where
 inhabitants :: Finite a => [a]
 inhabitants = [minBound..maxBound]
 
-class (Enum a, Bounded a) => Finite a where
+class (Enum a, Bounded a, Eq a, Ord a) => Finite a where
   typeSize :: Int
   typeSize = fromEnum (maxBound @a) - fromEnum (minBound @a) + 1
   finiteFstsnd :: forall α b. (a ~ (α⊗b)) => Dict (Finite α, Finite b)
