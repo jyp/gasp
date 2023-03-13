@@ -250,3 +250,21 @@ instance Braided' (->) where
   swap' = \case
     Inj1 x -> Inj2 x
     Inj2 x -> Inj1 x
+
+instance Cartesian (->) where
+  dup x = Pair x x
+  exr (Pair _ x) = x
+  exl (Pair x _) = x
+  (f ▵ g) x = f x `Pair` g x
+  dis _ = Unit
+
+instance CoCartesian' (->) where
+  inl' = Inj1
+  inr' = Inj2
+  new' = \case
+  f ▾ g = \case
+     Inj1 x -> f x
+     Inj2 y -> g y
+  jam' = \case
+     Inj1 x -> x
+     Inj2 x -> x
