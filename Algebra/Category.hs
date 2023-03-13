@@ -106,6 +106,8 @@ class (ProdObj (Obj cat), Category cat) => Monoidal (cat :: k -> k -> Type) wher
 class Monoidal cat => Braided cat where
   swap     :: (Obj cat a, Obj cat b) => (a ⊗ b) `cat` (b ⊗ a)
 
+class Braided cat => Symmetric cat
+
 class Monoidal k => Cartesian k where
   exl   ::   forall a b. O2 k a b                     =>    (a ⊗ b) `k` a
   exr   ::   forall a b. O2 k a b                     =>    (a ⊗ b) `k` b
@@ -169,6 +171,7 @@ class (SumObj (Obj cat), Category cat) => Monoidal' (cat :: k -> k -> Type) wher
 
 class Monoidal' cat => Braided' cat where
   swap'     :: (Obj cat a, Obj cat b) => (a ⊕ b) `cat` (b ⊕ a)
+class Braided' cat => Symmetric' cat
 
 type Cartesian' :: forall {k}. (k -> k -> Type) -> Constraint
 class Monoidal' cat => Cartesian' cat where
@@ -224,6 +227,7 @@ instance Monoidal (->) where
 
 instance Braided (->) where
   swap (x `Pair` y) = (y `Pair` x)
+instance Symmetric (->)
 
 instance Monoidal' (->) where
   f ⊕ g = \case
