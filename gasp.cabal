@@ -29,6 +29,7 @@ library
 
        
        Algebra.Classes
+       Algebra.Types
        
        Algebra.Morphism.Affine
        Algebra.Morphism.Exponential
