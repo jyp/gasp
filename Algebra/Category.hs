@@ -109,8 +109,8 @@ class Monoidal cat => Braided cat where
 class Monoidal k => Cartesian k where
   exl   ::   forall a b. O2 k a b                     =>    (a ⊗ b) `k` a
   exr   ::   forall a b. O2 k a b                     =>    (a ⊗ b) `k` b
-  dis   ::   forall a.  Obj k a                      =>    a `k` One
-  dup   ::   forall a. Obj k a                   =>    a `k` (a ⊗ a)
+  dis   ::   forall a.  Obj k a                       =>    a `k` One
+  dup   ::   forall a. Obj k a                        =>    a `k` (a ⊗ a)
   (▵)   ::   forall a b c. (Obj k a,Obj k b, Obj k c) =>    (a `k` b) -> (a `k` c) -> a `k` (b ⊗ c)
 
   {-# MINIMAL exl,exr,dup | exl,exr,(▵) | dis,dup | dis,(▵) #-}
@@ -166,8 +166,6 @@ class (SumObj (Obj cat), Category cat) => Monoidal' (cat :: k -> k -> Type) wher
      \\ objsum @(Obj cat) @a @Zero
      \\ objsum @(Obj cat) @Zero @a
      \\ objzero @(Obj cat)
-
-
 
 class Monoidal' cat => Braided' cat where
   swap'     :: (Obj cat a, Obj cat b) => (a ⊕ b) `cat` (b ⊕ a)

@@ -26,7 +26,7 @@
 module Algebra.Linear where
 
 import Algebra.Classes
-import Prelude (Show(..),Eq(..),Int,fst,($),Ord,Maybe(..),Bool(..),(&&),error)
+import Prelude (Show(..),Eq(..),Int,fst,($),Ord,error,flip)
 import Control.Applicative
 import Data.Foldable hiding (sum,product)
 import Data.Traversable
@@ -41,26 +41,42 @@ type VectorSpace scalar a = (Field scalar, Module scalar a, Group a)
 -- So we'd be better off using the following definition:
 
 -- | Representation of vector as traversable functor
-class (Eq (IndexType v),Applicative v,Traversable v) => VectorR v where
+class (Finite (IndexType v),Applicative v,Traversable v) => VectorR v where
   type IndexType v
   tabulate :: (IndexType v -> x) -> v x
+  vectorCut = error "vectorCut: not sum type"
+  vectorSplit = error "vectorSplit: not product type"
   vectorSplit :: (v ~ (f ⊗ g)) => Dict (VectorR f, VectorR g)
+  vectorCut :: (v ~ (f ⊕ g)) => Dict (VectorR f, VectorR g)
 
 instance (VectorR v, VectorR w) => VectorR (v ⊗ w) where
   vectorSplit = Dict
   type IndexType (v ⊗ w) = IndexType v ⊗ IndexType w
   tabulate f = Comp (tabulate (\i -> tabulate (\j -> f (i `Pair` j))))
 
+instance (VectorR v, VectorR w) => VectorR (v ⊕ w) where
+  vectorCut = Dict
+  type IndexType (v ⊕ w) = IndexType v ⊕ IndexType w
+  tabulate f = FunctorProd (tabulate (f . Inj1)) (tabulate (f . Inj2))
+
 instance (VectorR One) where
-  vectorSplit = error "vectorSplit: One: panic"
   tabulate f = FunctorUnit (f Unit)
   type IndexType One = One
+
+instance (VectorR Zero) where
+  tabulate _ = FunctorZero
+  type IndexType Zero = Zero
+
+instance SumObj VectorR where
+  objsum = Dict
+  objleftright = vectorCut
+  objzero = Dict
 
 instance ProdObj VectorR where
   objprod = Dict
   objfstsnd = vectorSplit
   objunit = Dict
-  
+
 -- ... but this is missing the link with *^ for module.  We should be
 -- able to add forall s. PreRing s => Module s (v s), but this creates
 -- problems when defining instances.
@@ -82,10 +98,12 @@ instance VectorR VZero where
   type IndexType VZero = Zero
   tabulate _ = VZero
   vectorSplit = error "vectorSplit: Zero: panic"
+  vectorCut = error "vectorCut: Zero: panic"
 instance VectorR a => VectorR (VNext a) where
-  type IndexType (VNext a) = Maybe (IndexType a)
-  tabulate f = VNext (tabulate (f . Just)) (f Nothing)
+  type IndexType (VNext a) = One ⊕ (IndexType a)
+  tabulate f = VNext (tabulate (f . Inj2)) (f (Inj1 Unit))
   vectorSplit = error "vectorSplit: VNext: panic"
+  vectorCut = error "vectorCut: VNext: panic"
   
 
 data V f a where
@@ -169,13 +187,11 @@ instance (Applicative f,Applicative g,Group a) => Group (Mat a f g) where
 instance (Functor f, Functor g,Scalable s a) => Scalable s (Mat a f g) where
   s *^ Mat t = Mat (((s*^) <$>) <$> t)
 
-
 -- | Hadamard product
 (⊙) :: Applicative v => Multiplicative s => v s -> v s -> v s
 x ⊙ y = (*) <$> x <*> y
 
-instance (VectorR f) => VectorR (Euclid f) where
-  vectorSplit = error "vectorSplit: Euclid: panic"
+instance VectorR f => VectorR (Euclid f) where
   tabulate f = Euclid (tabulate f)
   type IndexType (Euclid f) = IndexType f
   
@@ -222,28 +238,45 @@ instance (Applicative w, Applicative v) => Applicative (Flat w v) where
 instance Ring s => Category (Mat s) where
   type Obj (Mat s) = VectorR
   (.) = matMul
-  id = Mat (tabulate (\i -> (tabulate (\j -> indicate (i == j)))))
+  id = fromRel id
 
 fromRel :: (VectorR a, VectorR b) => Rel s (IndexType a) (IndexType b) -> Mat s a b
 fromRel (Rel f) = Mat (tabulate (\i -> tabulate (\j -> f i j)))
 
 instance Ring s => Monoidal (Mat s) where
-  assoc = Mat (tabulate (\((i `Pair` j) `Pair` k) -> tabulate (\(i' `Pair` (j' `Pair` k')) -> indicate (i == i' && j == j' && k == k'))))
-  assoc' = Mat (tabulate (\(i `Pair` (j `Pair` k)) -> tabulate (\((i' `Pair` j') `Pair` k') -> indicate (i == i' && j == j' && k == k'))))
-  unitorR = Mat (tabulate (\i -> tabulate (\(i' `Pair` _) -> indicate (i == i'))))
-  unitorR' = Mat (tabulate (\(i `Pair` _) -> tabulate (\(i') -> indicate (i == i'))))
+  assoc = fromRel assoc
+  assoc_ = fromRel assoc_
+  unitorR = fromRel unitorR
+  unitorR_ = fromRel unitorR_
   Mat f ⊗ Mat g = Mat (Comp (fmap (\x -> fmap Comp  (fmap (\y -> liftA2 (liftA2 (*)) (fmap pure x) (pure y)) g)) f))
 
-indicate :: Ring x => Bool -> x
-indicate = \case
-  True -> one
-  False -> zero
 
-instance Ring s => SMC (Mat s) where
-  swap = Mat (tabulate (\(i `Pair` j) -> tabulate (\(j' `Pair` i') -> indicate (i == i' && j == j'))))
+instance Ring s => Braided (Mat s) where
+  swap = fromRel swap
 
+instance Ring s => Monoidal' (Mat s) where
+  assoc' = fromRel assoc'
+  assoc_' = fromRel assoc_'
+  unitorR' = fromRel unitorR'
+  unitorR_' = fromRel unitorR_'
+  Mat f ⊕ Mat g = Mat (FunctorProd
+                        ((flip FunctorProd (pure zero)) <$> f)
+                        (FunctorProd (pure zero) <$> g))
 
+instance Ring s => Cartesian' (Mat s) where
+  Mat f ▴ Mat g = Mat (FunctorProd <$> f <*> g)
+  dis' = fromRel dis'
 
+instance Ring s => Braided' (Mat s) where
+  swap' = fromRel swap'
+
+instance Ring s => CoCartesian' (Mat s) where
+  inl' = fromRel inl'
+  inr' = fromRel inr'
+  new' = fromRel new'
+  jam' = fromRel jam'
+  Mat f ▾ Mat g = Mat (FunctorProd f g)
+  
 type Mat3x3 s = SqMat V3 s
 type Mat2x2 s = SqMat V2 s
 
@@ -261,6 +294,7 @@ u <+> v = (+) <$> u <*> v
 
 matVecMul :: forall s v w. (Ring s, Foldable v,Applicative v,Applicative w) => Mat s v w -> v s -> w s
 matVecMul (Mat m) x = foldr (<+>) (pure zero) ((*<) <$> x <*> m) -- If GHC gets fixed: use VectorR constraint instead of Applicative, and add instead of foldr.
+
 
 rotation2d :: Transcendental a => a -> Mat2x2 a
 rotation2d θ = transpose $ Mat $ V2 (V2 (cos θ) (-sin θ))
@@ -314,6 +348,9 @@ rotationFromTo from to = c *^ identity + s *^ crossProductMatrix v + (1-c) *^ (v
 transpose :: Applicative g => Traversable f => Mat a f g -> Mat a g f
 transpose = Mat . sequenceA . fromMat
 
+instance Ring s => Dagger (Mat s) where
+  dagger = transpose
+
 matMul :: (Traversable u, Ring s, Applicative w, Applicative v, Applicative u) => Mat s u w -> Mat s v u -> Mat s v w
 matMul a (Mat b) = Mat (matVecMul a <$> b)
 
@@ -322,7 +359,7 @@ matMul a (Mat b) = Mat (matVecMul a <$> b)
 -- Mat {fromMat = VNext (VNext VZero (VNext (VNext VZero 1.0) 0.0)) (VNext (VNext VZero 0.0) 1.0)}
 
 
-
+-- TODO: generalise to any dagger category
 -- The group of Orthogonal matrices, using "Multiplicative" for respecting conventions a bit better
 newtype OrthoMat v s = OrthoMat (SqMat v s)
 
