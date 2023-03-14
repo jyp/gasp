@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE QuantifiedConstraints #-}
@@ -14,16 +15,16 @@ module Algebra.Category.Objects where
 
 import Algebra.Classes
 import Algebra.Types
-import Prelude (Int, Ord (..),otherwise,($),Show)
+import Prelude (Int, Ord (..),otherwise,($))
 import Data.Kind
 import Data.Constraint
 import Test.QuickCheck
 import Test.QuickCheck.Property
 import Control.Applicative
 
-type TensorCon con = forall a b. (con a, con b) => con (a⊗b) :: Constraint
-type LConTensor con = forall a b. con (a⊗b) => con a :: Constraint
-type RConTensor con = forall a b. con (a⊗b) => con a :: Constraint
+-- type TensorCon con = forall a b. (con a, con b) => con (a⊗b) :: Constraint
+-- type LConTensor con = forall a b. con (a⊗b) => con a :: Constraint
+-- type RConTensor con = forall a b. con (a⊗b) => con a :: Constraint
 
 type ProdObj :: forall {k}. (k -> Constraint) -> Constraint
 class ProdObj (con :: k -> Constraint) where -- TensorClosed constraint causes problems in the Free module. (probabjy GHC bug)
@@ -84,6 +85,20 @@ sizedArbRepr n
       elements [Some1 (RPlus l r),Some1 (RTimes l r)]
         \\ objSumProxy @con l r
         \\ objProdProxy @con l r
+
+isArb1 :: Repr x -> Dict (Arbitrary1 x)
+isArb1 = \case
+  RZero -> Dict
+  ROne -> Dict
+  RTimes a b -> Dict \\ isArb1 a \\ isArb1 b
+  RPlus a b -> Dict \\ isArb1 a \\ isArb1 b
+
+isCoArb :: Repr x -> Dict (CoArbitrary x)
+isCoArb = \case
+  RZero -> Dict
+  ROne -> Dict
+  RTimes a b -> Dict \\ isCoArb a \\ isCoArb b
+  RPlus a b -> Dict \\ isCoArb a \\ isCoArb b
 
 instance (ProdObj con, SumObj con) => Arbitrary (Some1 con Repr) where
   arbitrary = sized sizedArbRepr

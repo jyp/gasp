@@ -27,6 +27,10 @@ import Data.Constraint
 import Test.QuickCheck
 import Prelude (Show(..))
 
+type TensorCon con = forall a b. (con a, con b) => con (a⊗b) :: Constraint
+type LConTensor con = forall a b. con (a⊗b) => con a :: Constraint
+type RConTensor con = forall a b. con (a⊗b) => con a :: Constraint
+
 type O2 k a b = (Obj k a, Obj k b)
 type O3 k a b c =
   (Obj k a, Obj k b, Obj k c)
@@ -112,7 +116,7 @@ class Category cat => Dagger cat where
 (∘) = (.) 
 
 
-class (ProdObj (Obj cat), Category cat) => Monoidal (cat :: k -> k -> Type) where
+class ({-ProdObj (Obj cat), -}Category cat) => Monoidal (cat :: k -> k -> Type) where
   (⊗)      :: (Obj cat a, Obj cat b, Obj cat c, Obj cat d) => (a `cat` b) -> (c `cat` d) -> (a ⊗ c) `cat` (b ⊗ d)
   assoc    :: (Obj cat a, Obj cat b, Obj cat c) => ((a ⊗ b) ⊗ c) `cat` (a ⊗ (b ⊗ c))
   assoc_   :: (Obj cat a, Obj cat b, Obj cat c) => (a ⊗ (b ⊗ c)) `cat` ((a ⊗ b) ⊗ c)
@@ -121,17 +125,17 @@ class (ProdObj (Obj cat), Category cat) => Monoidal (cat :: k -> k -> Type) wher
   unitorL   :: (Obj cat a, Obj cat One) => a `cat` (One ⊗ a)
   unitorL_  :: (Obj cat a, Obj cat One) => (One ⊗ a) `cat` a
 
-  default unitorL :: forall a. (Braided cat, Obj cat a) => a `cat` (One ⊗ a)
+  default unitorL :: forall a con. (con ~ Obj cat, con One, TensorCon con, Braided cat, Obj cat a) => a `cat` (One ⊗ a)
   unitorL = swap ∘ unitorR
-     \\ objprod @(Obj cat) @a @One
-     \\ objprod @(Obj cat) @One @a
-     \\ objone @(Obj cat)
+     -- \\ objprod @(Obj cat) @a @One
+     -- \\ objprod @(Obj cat) @One @a
+     -- \\ objone @(Obj cat)
 
-  default unitorL_ :: forall a. (Braided cat, Obj cat a) => (One ⊗ a) `cat` a 
+  default unitorL_ :: forall a con. (con ~ Obj cat, Braided cat, con One, TensorCon con, Obj cat a) => (One ⊗ a) `cat` a 
   unitorL_ = unitorR_ ∘ swap
-     \\ objprod @(Obj cat) @a @One
-     \\ objprod @(Obj cat) @One @a
-     \\ objone @(Obj cat)
+     -- \\ objprod @(Obj cat) @a @One
+     -- \\ objprod @(Obj cat) @One @a
+     -- \\ objone @(Obj cat)
 
 
 class Monoidal cat => Braided cat where
@@ -139,29 +143,26 @@ class Monoidal cat => Braided cat where
 
 class Braided cat => Symmetric cat
 
-class Monoidal k => Cartesian k where
-  exl   ::   forall a b. O2 k a b                     =>    (a ⊗ b) `k` a
-  exr   ::   forall a b. O2 k a b                     =>    (a ⊗ b) `k` b
-  dis   ::   forall a.  Obj k a                       =>    a `k` One
-  dup   ::   forall a. Obj k a                        =>    a `k` (a ⊗ a)
-  (▵)   ::   forall a b c. (Obj k a,Obj k b, Obj k c) =>    (a `k` b) -> (a `k` c) -> a `k` (b ⊗ c)
+class Monoidal cat => Cartesian cat where
+  exl   ::   forall a b. O2 cat a b                     =>    (a ⊗ b) `cat` a
+  exr   ::   forall a b. O2 cat a b                     =>    (a ⊗ b) `cat` b
+  dis   ::   forall a.  Obj cat a                       =>    a `cat` One
+  dup   ::   forall a. Obj cat a                        =>    a `cat` (a ⊗ a)
+  (▵)   ::   forall a b c. (Obj cat a,Obj cat b, Obj cat c) =>    (a `cat` b) -> (a `cat` c) -> a `cat` (b ⊗ c)
 
   {-# MINIMAL exl,exr,dup | exl,exr,(▵) | dis,dup | dis,(▵) #-}
+  default dis :: forall a con. (con ~ Obj cat, con One, TensorCon con, Obj cat a) => a `cat` One
   dis = exr . unitorR
-     \\ objprod @(Obj k) @a @One
-     \\ objone @(Obj k)
+  default dup :: forall a con. (con ~ Obj cat, con One, TensorCon con, Obj cat a) => a `cat` (a⊗a)
   dup = id ▵ id
+  default exl :: forall a b con. (con ~ Obj cat, con One, TensorCon con, con a, con b) =>  (a ⊗ b) `cat` a
   exl = unitorR_ . (id ⊗ dis)
-          \\ objprod @(Obj k) @a @b
-          \\ objprod @(Obj k) @a @One
-          \\ objone @(Obj k)
+  default exr :: forall a b con. (con ~ Obj cat, con One, TensorCon con, con a, con b) =>  (a ⊗ b) `cat` b
   exr = unitorL_ ∘ (dis ⊗ id)
-          \\ objprod @(Obj k) @a @b
-          \\ objprod @(Obj k) @One @b
-          \\ objone @(Obj k)
+  default (▵)   ::   forall a b c con. (con ~ Obj cat, con One, TensorCon con, Obj cat a,Obj cat b, Obj cat c) =>    (a `cat` b) -> (a `cat` c) -> a `cat` (b ⊗ c)
   f ▵ g = (f ⊗ g) ∘ dup 
-          \\ objprod @(Obj k) @a @a
-          \\ objprod @(Obj k) @b @c 
+  --         \\ objprod @(Obj k) @a @a
+  --         \\ objprod @(Obj k) @b @c 
 
 cartesianCross :: (Obj k (b1 ⊗ b2), Obj k b3, Obj k c, Obj k b1,
                      Obj k b2, Cartesian k) =>

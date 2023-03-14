@@ -104,7 +104,7 @@ instance (CoArbitrary f, CoArbitrary g) => CoArbitrary (f ⊗ g) where
 
 
 -- | Algebraic structure for (Type -> Type) is in the exponential
--- level Finitecause functor composition is generally where the action is.
+-- level because functor composition is generally where the action is.
 instance AlgebraicKind (Type -> Type) where
   data (f ⊗ g) x = Comp {fromComp :: (f (g x))} deriving (Foldable, Traversable, Functor, Generic1, Show, Eq)
   data (f ⊕ g) x = FunctorProd {prodFst :: f x, prodSnd :: g x} deriving (Foldable, Traversable, Functor,Generic1, Show, Eq)

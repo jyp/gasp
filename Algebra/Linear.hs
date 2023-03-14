@@ -27,7 +27,7 @@
 module Algebra.Linear where
 
 import Algebra.Classes
-import Prelude (Show(..),Eq(..),($),Ord,error,flip)
+import Prelude (Show(..),Eq(..),($),Ord,error,flip,IO,Bool,Int)
 import Control.Applicative
 import Data.Foldable hiding (sum,product)
 import Data.Traversable
@@ -36,8 +36,10 @@ import Algebra.Category
 import Algebra.Types
 import Data.Constraint
 import Algebra.Category.Relation
+import Algebra.Category.Objects
 import Data.Functor.Rep
 import Data.Distributive
+import Test.QuickCheck hiding (collect, tabulate)
 
 type VectorSpace scalar a = (Field scalar, Module scalar a, Group a)
 -- Because of the existence of bases, vector spaces can always be made representable (Traversable, Applicative) functors.
@@ -67,7 +69,7 @@ instance SumObj VectorR where
 instance ProdObj VectorR where
   objprod = Dict
   objfstsnd = vectorSplit
-  objunit = Dict
+  objone = Dict
 
 -- ... but this is missing the link with *^ for module.  We should be
 -- able to add forall s. PreRing s => Module s (v s), but this creates
@@ -343,9 +345,16 @@ matVecMul (Mat m) x = foldr (<+>) (pure zero) ((*<) <$> x <*> m)
 
 -- >>> let t1 = rotation2d (1::Double) in matMul (transpose t1) t1
 -- Mat {fromMat = VNext (VNext VZero (VNext (VNext VZero 1.0) 0.0)) (VNext (VNext VZero 0.0) 1.0)}
+
+instance (Arbitrary s, Arbitrary1 a, Arbitrary1 b) => Arbitrary (Mat s a b) where
+  arbitrary = Mat <$> liftArbitrary arbitrary1
+instance (TestEqual s, Arbitrary s, Arbitrary1 a, Arbitrary1 b,Show (a (b s)), VectorR b, VectorR a) => TestEqual (Mat s a b) where
+  Mat m =.= Mat n = product (product <$> ( liftA2 (=.=) <$> m <*> n))
+
+
+
 prop_laws :: Property
-prop_laws = product [laws_testEqual @(BernsteinP V2' Double)
-                    ,laws_ring @(BernsteinP V2' Double)]
+prop_laws = laws_category @(Mat Int)
 
 
 return []
