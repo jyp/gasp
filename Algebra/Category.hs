@@ -25,7 +25,7 @@ import qualified Prelude
 import Data.Kind
 import Data.Constraint
 import Test.QuickCheck
-
+import Prelude (Show(..))
 
 type O2 k a b = (Obj k a, Obj k b)
 type O3 k a b c =
@@ -53,16 +53,56 @@ class Category (cat :: k -> k -> Type) where
 law_id_comp :: forall {k} (f :: k -> k -> Type) a b. (Category f, TestEqual (f a b), O2 f a b) => f a b -> Property
 law_id_comp n = nameLaw "id/comp" (id . n =.= n)
 
+forallMorphism :: forall {k} f {con :: k -> Constraint} x y.
+                  (con ~ Obj f,
+                   con x, con y,
+                   forall α β. (con α, con β) => Arbitrary (f α β),
+                   forall α β. (con α, con β) => Show (f α β),
+                   ProdObj con, SumObj con)
+               => Repr x -> Repr y -> (f x y -> Property) -> Property
+forallMorphism t1 t2 = forAll (arbitrary2' t1 t2)
+
+forallMorphism' :: forall {k} f {con :: k -> Constraint} .
+                  (con ~ Obj f,
+                   forall α β. (con α, con β) => Arbitrary (f α β),
+                   forall α β. (con α, con β) => Show (f α β),
+                   ProdObj con, SumObj con)
+               => (forall x y. (con x, con y) => f x y -> Property) -> Property
+forallMorphism' p = forallType @con (\t1 ->
+                    forallType @con (\t2 ->
+                    forallMorphism t1 t2 (\f ->
+                    p f)))
+
 law_comp_id :: forall {k} (f :: k -> k -> Type) a b. (Category f, TestEqual (f a b), O2 f a b) => f a b -> Property
 law_comp_id n = nameLaw "comp/id" (n . id =.= n)
 
 law_comp_assoc :: forall {k} (f :: k -> k -> Type) a b c d. (Category f, TestEqual (f a d), O4 f a b c d) => f c d -> f b c -> f a b -> Property
 law_comp_assoc n m o = nameLaw "comp/assoc" (n . (m . o) =.= (n . m) . o)
 
-laws_category :: forall {k} (f :: k -> k -> Type). (forall a b. O2 f a b => Arbitrary (f a b), Category f, forall a b. TestEqual (f a b)) => Property
-laws_category = product [property (forallMorphism (law_id_comp @f))
-                        ,property (law_comp_id @f)
-                        ,property (law_comp_assoc @f)]
+law_comp_assoc' :: forall {k} (f :: k -> k -> Type) {con}.
+  (forall x y. (con x, con y) => TestEqual (f x y),
+   -- forall α β. (con α, con β) => Arbitrary (f α β),
+   -- forall α β. (con α, con β) => Show (f α β),
+   ProdObj con, SumObj con,
+   con ~ Obj f, Category f) => Property
+law_comp_assoc' = forallType @con (\t1 ->
+                  forallType @con (\t2 ->
+                  forallType @con (\t3 ->
+                  forallType @con (\t4 ->
+                  forallMorphism @f t1 t2 (\ h ->
+                  forallMorphism @f t2 t3 (\ g ->
+                  forallMorphism @f t3 t4 (\ f ->
+                  f . (g . h) =.= (f . g) . h)))))))
+
+laws_category :: forall {k} (f :: k -> k -> Type) {con}.
+                 (forall x y. (con x, con y) => TestEqual (f x y),
+   ProdObj con, SumObj con,
+   con ~ Obj f, Category f)
+              => Property
+laws_category = product [forallMorphism' @f (\ f -> property (law_id_comp f))
+                        ,forallMorphism' @f (\ f -> property (law_comp_id f))
+                        ,law_comp_assoc' @f
+                        ]
 
 
 class Category cat => Dagger cat where
@@ -159,7 +199,7 @@ class Monoidal' cat => Cartesian' cat where
   exl'  ::   forall a b. O2 cat a b                     =>    (a ⊕ b) `cat` a
   exr'  ::   forall a b. O2 cat a b                     =>    (a ⊕ b) `cat` b
   dis'  ::   forall a.   Obj cat a                      =>    a `cat` Zero
-  dup'  ::   (Obj cat a, Obj cat (a⊕a))                   =>    a `cat` (a ⊕ a)
+  dup'  ::   (Obj cat a)                   =>    a `cat` (a ⊕ a)
   (▴)   ::   forall a b c. (Obj cat a,Obj cat b, Obj cat c) =>    (a `cat` b) -> (a `cat` c) -> a `cat` (b ⊕ c)
 
   {-# MINIMAL exl',exr',dup' | exl',exr',(▴) | dis',dup' | dis',(▴) #-}

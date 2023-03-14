@@ -89,15 +89,11 @@ instance (ProdObj con, SumObj con) => Arbitrary (Some1 con Repr) where
   arbitrary = sized sizedArbRepr
 
 forallType :: forall {k}  con.  (ProdObj con, SumObj con) =>
-                       (forall (x :: k). (con x) => Repr x -> Property) -> Property
+              (forall (x :: k). con x => Repr x -> Property) -> Property
 forallType gen = MkProperty $ do
   Some1 t <- (arbitrary :: Gen (Some1 con Repr))
   unProperty (property (gen t))
 
-forallMorphism :: forall prop {k} (con :: k -> Constraint) f.
-                  (forall α β. (con α, con β) => Arbitrary (f α β),
-                   forall α β. (con α, con β) => Show (f α β),
-                   Testable prop, ProdObj con, SumObj con)
-               => (forall x y. (con x, con y) => Repr x -> Repr y -> f x y -> prop) -> Property
-forallMorphism f = forallType @con (\t1 -> forallType @con (\t2 -> forAll arbitrary (f t1 t2)))
+arbitrary2' :: forall f x y. Arbitrary (f x y) => Repr x -> Repr y -> Gen (f x y)
+arbitrary2' _ _ = arbitrary
 
