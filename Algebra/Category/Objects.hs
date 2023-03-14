@@ -22,9 +22,18 @@ import Test.QuickCheck
 import Test.QuickCheck.Property
 import Control.Applicative
 
--- type TensorCon con = forall a b. (con a, con b) => con (a⊗b) :: Constraint
+type TimesCon con = forall a b. (con a, con b) => con (a⊗b) :: Constraint
+type PlusCon con = forall a b. (con a, con b) => con (a⊕b) :: Constraint
 -- type LConTensor con = forall a b. con (a⊗b) => con a :: Constraint
 -- type RConTensor con = forall a b. con (a⊗b) => con a :: Constraint
+
+reprCon :: forall con x. (TimesCon con, PlusCon con, con One, con Zero) => Repr x -> Dict (con x)
+reprCon = \case
+  RPlus a b -> Dict \\ reprCon @con a \\ reprCon @con b
+  RTimes a b -> Dict \\ reprCon @con a \\ reprCon @con b
+  RZero -> Dict
+  ROne -> Dict
+
 
 type ProdObj :: forall {k}. (k -> Constraint) -> Constraint
 class ProdObj (con :: k -> Constraint) where -- TensorClosed constraint causes problems in the Free module. (probabjy GHC bug)
@@ -71,42 +80,30 @@ instance SumObj Finite where
   objzero = Dict
 
 
-data Some1 (con :: k -> Constraint) f where
-  Some1 :: con x => f x -> Some1 con f
+data Some1  f where
+  Some1 :: f x -> Some1 f
 
-sizedArbRepr :: forall con. (ProdObj con, SumObj con) => Int -> Gen (Some1 con Repr)
+sizedArbRepr :: Int -> Gen (Some1 Repr)
 sizedArbRepr n
   | n <= 1 = frequency [(1,pure(Some1 RZero)), (3,pure(Some1 ROne))]
-     \\ objone @con
-     \\ objzero @con
   | otherwise = do
-      Some1 l <- sizedArbRepr @con (n `div` 2)
-      Some1 r <- sizedArbRepr @con (n `div` 2)
+      Some1 l <- sizedArbRepr  (n `div` 2)
+      Some1 r <- sizedArbRepr  (n `div` 2)
       elements [Some1 (RPlus l r),Some1 (RTimes l r)]
-        \\ objSumProxy @con l r
-        \\ objProdProxy @con l r
 
-isArb1 :: Repr x -> Dict (Arbitrary1 x)
-isArb1 = \case
-  RZero -> Dict
-  ROne -> Dict
-  RTimes a b -> Dict \\ isArb1 a \\ isArb1 b
-  RPlus a b -> Dict \\ isArb1 a \\ isArb1 b
 
-isCoArb :: Repr x -> Dict (CoArbitrary x)
-isCoArb = \case
-  RZero -> Dict
-  ROne -> Dict
-  RTimes a b -> Dict \\ isCoArb a \\ isCoArb b
-  RPlus a b -> Dict \\ isCoArb a \\ isCoArb b
+isArbitrary1 :: Repr x -> Dict (Arbitrary1 x)
+isArbitrary1 = reprCon
 
-instance (ProdObj con, SumObj con) => Arbitrary (Some1 con Repr) where
+isCoArbitrary :: Repr x -> Dict (CoArbitrary x)
+isCoArbitrary = reprCon
+
+instance Arbitrary (Some1 Repr) where
   arbitrary = sized sizedArbRepr
 
-forallType :: forall {k}  con.  (ProdObj con, SumObj con) =>
-              (forall (x :: k). con x => Repr x -> Property) -> Property
+forallType :: (forall (x :: k). Repr x -> Property) -> Property
 forallType gen = MkProperty $ do
-  Some1 t <- (arbitrary :: Gen (Some1 con Repr))
+  Some1 t <- (arbitrary :: Gen (Some1 Repr))
   unProperty (property (gen t))
 
 arbitrary2' :: forall f x y. Arbitrary (f x y) => Repr x -> Repr y -> Gen (f x y)

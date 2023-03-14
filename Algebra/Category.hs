@@ -27,9 +27,6 @@ import Data.Constraint
 import Test.QuickCheck
 import Prelude (Show(..))
 
-type TensorCon con = forall a b. (con a, con b) => con (a⊗b) :: Constraint
-type LConTensor con = forall a b. con (a⊗b) => con a :: Constraint
-type RConTensor con = forall a b. con (a⊗b) => con a :: Constraint
 
 type O2 k a b = (Obj k a, Obj k b)
 type O3 k a b c =
@@ -57,25 +54,26 @@ class Category (cat :: k -> k -> Type) where
 law_id_comp :: forall {k} (f :: k -> k -> Type) a b. (Category f, TestEqual (f a b), O2 f a b) => f a b -> Property
 law_id_comp n = nameLaw "id/comp" (id . n =.= n)
 
-forallMorphism :: forall {k} f {con :: k -> Constraint} x y.
-                  (con ~ Obj f,
-                   con x, con y,
-                   forall α β. (con α, con β) => Arbitrary (f α β),
-                   forall α β. (con α, con β) => Show (f α β),
-                   ProdObj con, SumObj con)
+forallMorphism :: forall f x y. (Show (f x y), Arbitrary (f x y))
                => Repr x -> Repr y -> (f x y -> Property) -> Property
 forallMorphism t1 t2 = forAll (arbitrary2' t1 t2)
 
-forallMorphism' :: forall {k} f {con :: k -> Constraint} .
-                  (con ~ Obj f,
+forallObj ::  forall {k} (f :: k -> k -> Type) {con}  .
+  (Obj f ~ con, con One, con Zero, TimesCon con, PlusCon con)
+  => (forall (x :: k). con x => Repr x -> Property) -> Property
+forallObj k = forallType (\t -> k t \\ reprCon @con t)
+
+forallMorphism' :: forall {k} (f :: k -> k -> Type) {con :: k -> Constraint}  .
+                  (Obj f ~ con,
                    forall α β. (con α, con β) => Arbitrary (f α β),
                    forall α β. (con α, con β) => Show (f α β),
-                   ProdObj con, SumObj con)
-               => (forall x y. (con x, con y) => f x y -> Property) -> Property
-forallMorphism' p = forallType @con (\t1 ->
-                    forallType @con (\t2 ->
-                    forallMorphism t1 t2 (\f ->
-                    p f)))
+                   con One, con Zero, TimesCon con, PlusCon con)
+               => (forall x y. (con x, con y) => Repr x -> Repr y -> f x y -> Property) -> Property
+forallMorphism' p = forallObj @f (\t1 -> 
+                    forallObj @f (\t2 -> 
+                    forallMorphism @f t1 t2 (\f ->
+                    p t1 t2 f)))
+
 
 law_comp_id :: forall {k} (f :: k -> k -> Type) a b. (Category f, TestEqual (f a b), O2 f a b) => f a b -> Property
 law_comp_id n = nameLaw "comp/id" (n . id =.= n)
@@ -84,28 +82,37 @@ law_comp_assoc :: forall {k} (f :: k -> k -> Type) a b c d. (Category f, TestEqu
 law_comp_assoc n m o = nameLaw "comp/assoc" (n . (m . o) =.= (n . m) . o)
 
 law_comp_assoc' :: forall {k} (f :: k -> k -> Type) {con}.
-  (forall x y. (con x, con y) => TestEqual (f x y),
+  (-- forall x y. (con x, con y) => TestEqual (f x y),
    -- forall α β. (con α, con β) => Arbitrary (f α β),
    -- forall α β. (con α, con β) => Show (f α β),
-   ProdObj con, SumObj con,
-   con ~ Obj f, Category f) => Property
-law_comp_assoc' = forallType @con (\t1 ->
-                  forallType @con (\t2 ->
-                  forallType @con (\t3 ->
-                  forallType @con (\t4 ->
-                  forallMorphism @f t1 t2 (\ h ->
-                  forallMorphism @f t2 t3 (\ g ->
-                  forallMorphism @f t3 t4 (\ f ->
-                  f . (g . h) =.= (f . g) . h)))))))
+   con One, con Zero, TimesCon con, PlusCon con,
+   con ~ Obj f, Category f)
+                =>
+                (forall x y . Repr x -> Repr y -> Dict (Arbitrary (f x y), Show (f x y), TestEqual (f x y)) ) ->
+  Property
+law_comp_assoc' arb
+  = forallObj @f (\t1 ->
+                  forallObj @f (\t2 ->
+                  forallObj @f (\t3 ->
+                  forallObj @f (\t4 ->
+                  arb t1 t2 // forallMorphism @f t1 t2 (\ h ->
+                  arb t2 t3 // forallMorphism @f t2 t3 (\ g ->
+                  arb t3 t4 // forallMorphism @f t3 t4 (\ f ->
+                  arb t1 t4 // (f . (g . h) =.= (f . g) . h))))))))
+
+(//) :: Dict c -> (c => k) -> k
+Dict // k = k
 
 laws_category :: forall {k} (f :: k -> k -> Type) {con}.
-                 (forall x y. (con x, con y) => TestEqual (f x y),
-   ProdObj con, SumObj con,
-   con ~ Obj f, Category f)
-              => Property
-laws_category = product [forallMorphism' @f (\ f -> property (law_id_comp f))
-                        ,forallMorphism' @f (\ f -> property (law_comp_id f))
-                        ,law_comp_assoc' @f
+                 (
+                 -- forall x y. (con x, con y) => TestEqual (f x y),
+                   con One, con Zero, TimesCon con, PlusCon con,
+                   con ~ Obj f, Category f)
+              =>   (forall x y . Repr x -> Repr y -> Dict (Arbitrary (f x y), Show (f x y), TestEqual (f x y)) ) ->
+                 Property
+laws_category = product [forallMorphism' @f (\_ _ f -> property (law_id_comp f))
+                        ,forallMorphism' @f (\_ _ f -> property (law_comp_id f))
+                        ,law_comp_assoc' @f _
                         ]
 
 
@@ -125,17 +132,11 @@ class ({-ProdObj (Obj cat), -}Category cat) => Monoidal (cat :: k -> k -> Type) 
   unitorL   :: (Obj cat a, Obj cat One) => a `cat` (One ⊗ a)
   unitorL_  :: (Obj cat a, Obj cat One) => (One ⊗ a) `cat` a
 
-  default unitorL :: forall a con. (con ~ Obj cat, con One, TensorCon con, Braided cat, Obj cat a) => a `cat` (One ⊗ a)
+  default unitorL :: forall a con. (con ~ Obj cat, con One, TimesCon con, Braided cat, Obj cat a) => a `cat` (One ⊗ a)
   unitorL = swap ∘ unitorR
-     -- \\ objprod @(Obj cat) @a @One
-     -- \\ objprod @(Obj cat) @One @a
-     -- \\ objone @(Obj cat)
 
-  default unitorL_ :: forall a con. (con ~ Obj cat, Braided cat, con One, TensorCon con, Obj cat a) => (One ⊗ a) `cat` a 
+  default unitorL_ :: forall a con. (con ~ Obj cat, Braided cat, con One, TimesCon con, Obj cat a) => (One ⊗ a) `cat` a 
   unitorL_ = unitorR_ ∘ swap
-     -- \\ objprod @(Obj cat) @a @One
-     -- \\ objprod @(Obj cat) @One @a
-     -- \\ objone @(Obj cat)
 
 
 class Monoidal cat => Braided cat where
@@ -151,18 +152,16 @@ class Monoidal cat => Cartesian cat where
   (▵)   ::   forall a b c. (Obj cat a,Obj cat b, Obj cat c) =>    (a `cat` b) -> (a `cat` c) -> a `cat` (b ⊗ c)
 
   {-# MINIMAL exl,exr,dup | exl,exr,(▵) | dis,dup | dis,(▵) #-}
-  default dis :: forall a con. (con ~ Obj cat, con One, TensorCon con, Obj cat a) => a `cat` One
+  default dis :: forall a con. (con ~ Obj cat, con One, TimesCon con, Obj cat a) => a `cat` One
   dis = exr . unitorR
-  default dup :: forall a con. (con ~ Obj cat, con One, TensorCon con, Obj cat a) => a `cat` (a⊗a)
+  default dup :: forall a con. (con ~ Obj cat, con One, TimesCon con, Obj cat a) => a `cat` (a⊗a)
   dup = id ▵ id
-  default exl :: forall a b con. (con ~ Obj cat, con One, TensorCon con, con a, con b) =>  (a ⊗ b) `cat` a
+  default exl :: forall a b con. (con ~ Obj cat, con One, TimesCon con, con a, con b) =>  (a ⊗ b) `cat` a
   exl = unitorR_ . (id ⊗ dis)
-  default exr :: forall a b con. (con ~ Obj cat, con One, TensorCon con, con a, con b) =>  (a ⊗ b) `cat` b
+  default exr :: forall a b con. (con ~ Obj cat, con One, TimesCon con, con a, con b) =>  (a ⊗ b) `cat` b
   exr = unitorL_ ∘ (dis ⊗ id)
-  default (▵)   ::   forall a b c con. (con ~ Obj cat, con One, TensorCon con, Obj cat a,Obj cat b, Obj cat c) =>    (a `cat` b) -> (a `cat` c) -> a `cat` (b ⊗ c)
+  default (▵)   ::   forall a b c con. (con ~ Obj cat, con One, TimesCon con, Obj cat a,Obj cat b, Obj cat c) =>    (a `cat` b) -> (a `cat` c) -> a `cat` (b ⊗ c)
   f ▵ g = (f ⊗ g) ∘ dup 
-  --         \\ objprod @(Obj k) @a @a
-  --         \\ objprod @(Obj k) @b @c 
 
 cartesianCross :: (Obj k (b1 ⊗ b2), Obj k b3, Obj k c, Obj k b1,
                      Obj k b2, Cartesian k) =>
@@ -170,7 +169,7 @@ cartesianCross :: (Obj k (b1 ⊗ b2), Obj k b3, Obj k c, Obj k b1,
 cartesianCross a b = (a . exl) ▵ (b . exr)
 
 
-class (SumObj (Obj cat), Category cat) => Monoidal' (cat :: k -> k -> Type) where
+class (Category cat) => Monoidal' (cat :: k -> k -> Type) where
   (⊕)      :: (Obj cat a, Obj cat b, Obj cat c, Obj cat d) => (a `cat` b) -> (c `cat` d) -> (a ⊕ c) `cat` (b ⊕ d)
   assoc'    :: (Obj cat a, Obj cat b, Obj cat c) => ((a ⊕ b) ⊕ c) `cat` (a ⊕ (b ⊕ c))
   assoc_'   :: (Obj cat a, Obj cat b, Obj cat c) => (a ⊕ (b ⊕ c)) `cat` ((a ⊕ b) ⊕ c)
@@ -179,17 +178,10 @@ class (SumObj (Obj cat), Category cat) => Monoidal' (cat :: k -> k -> Type) wher
   unitorL'   :: (Obj cat a, Obj cat Zero) => a `cat` (Zero ⊕ a)
   unitorL_'  :: (Obj cat a, Obj cat Zero) => (Zero ⊕ a) `cat` a
 
-  default unitorL' :: forall a. (Braided' cat, Obj cat a) => a `cat` (Zero ⊕ a)
+  default unitorL' :: forall a con. (con ~ Obj cat, con Zero, PlusCon con, Braided' cat, Obj cat a) => a `cat` (Zero ⊕ a)
   unitorL' = swap' ∘ unitorR'
-     \\ objsum @(Obj cat) @a @Zero
-     \\ objsum @(Obj cat) @Zero @a
-     \\ objzero @(Obj cat)
-
-  default unitorL_' :: forall a. (Braided' cat, Obj cat a) => (Zero ⊕ a) `cat` a 
-  unitorL_' = unitorR_' ∘ swap' 
-     \\ objsum @(Obj cat) @a @Zero
-     \\ objsum @(Obj cat) @Zero @a
-     \\ objzero @(Obj cat)
+  default unitorL_' :: forall a con. (con ~ Obj cat, Braided' cat, con Zero, PlusCon con, Obj cat a) => (Zero ⊕ a) `cat` a 
+  unitorL_' = unitorR_' ∘ swap'
 
 class Monoidal' cat => Braided' cat where
   swap'     :: (Obj cat a, Obj cat b) => (a ⊕ b) `cat` (b ⊕ a)
@@ -204,21 +196,16 @@ class Monoidal' cat => Cartesian' cat where
   (▴)   ::   forall a b c. (Obj cat a,Obj cat b, Obj cat c) =>    (a `cat` b) -> (a `cat` c) -> a `cat` (b ⊕ c)
 
   {-# MINIMAL exl',exr',dup' | exl',exr',(▴) | dis',dup' | dis',(▴) #-}
+  default dis' :: forall a con. (con ~ Obj cat, con Zero, PlusCon con, Obj cat a) => a `cat` Zero
   dis' = exr' . unitorR'
-     \\ objsum @(Obj cat) @a @Zero
-     \\ objzero @(Obj cat)
+  default dup' :: forall a con. (con ~ Obj cat, con Zero, PlusCon con, Obj cat a) => a `cat` (a⊕a)
   dup' = id ▴ id
+  default exl' :: forall a b con. (con ~ Obj cat, con Zero, PlusCon con, con a, con b) =>  (a ⊕ b) `cat` a
   exl' = unitorR_' . (id ⊕ dis')
-          \\ objsum @(Obj cat) @a @b
-          \\ objsum @(Obj cat) @a @Zero
-          \\ objzero @(Obj cat)
+  default exr' :: forall a b con. (con ~ Obj cat, con Zero, PlusCon con, con a, con b) =>  (a ⊕ b) `cat` b
   exr' = unitorL_' ∘ (dis' ⊕ id)
-          \\ objsum @(Obj cat) @a @b
-          \\ objsum @(Obj cat) @Zero @b
-          \\ objzero @(Obj cat)
-  f ▴ g = (f ⊕ g) ∘ dup' 
-          \\ objsum @(Obj cat) @a @a
-          \\ objsum @(Obj cat) @b @c 
+  default (▴)   ::   forall a b c con. (con ~ Obj cat, con Zero, PlusCon con, Obj cat a,Obj cat b, Obj cat c) =>    (a `cat` b) -> (a `cat` c) -> a `cat` (b ⊕ c)
+  f ▴ g = (f ⊕ g) ∘ dup'
 
 
 class Monoidal' k => CoCartesian' k where

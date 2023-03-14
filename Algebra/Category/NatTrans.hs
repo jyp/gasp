@@ -7,19 +7,13 @@
 module Algebra.Category.NatTrans where
 
 import Algebra.Category
-import Algebra.Category.Objects
-import Prelude (Functor(..))
+import Prelude (Functor(..),flip)
 import Algebra.Types
 
 import Data.Kind
 
 newtype NatTrans (f :: Type -> Type) (g :: Type -> Type) = NatTrans (forall x. f x -> g x)
 
-class Functor f => FUNCTOR (f :: Type -> Type)
-instance Functor f => FUNCTOR f
-
-instance ProdObj FUNCTOR where
-instance SumObj FUNCTOR where
 
 instance Category NatTrans where
   type Obj NatTrans = Functor
@@ -36,6 +30,12 @@ instance Monoidal NatTrans where
   unitorL_ = NatTrans (fromFunctorUnit . fromComp)
 
 instance Monoidal' NatTrans where
+  assoc' = NatTrans (\(FunctorProd (FunctorProd x y) z) -> FunctorProd x (FunctorProd y z))
+  assoc_' = NatTrans (\(FunctorProd x (FunctorProd y z)) -> (FunctorProd (FunctorProd x y) z))
+  unitorR' = NatTrans (\x -> FunctorProd x FunctorZero)
+  unitorR_' = NatTrans (\(FunctorProd x _) -> x)
+  unitorL' = NatTrans (FunctorProd FunctorZero)
+  unitorL_' = NatTrans (\(FunctorProd _ x) -> x)
   NatTrans f ⊕ NatTrans g = NatTrans (\(FunctorProd x y) ->  FunctorProd (f x) (g y))
   
 
