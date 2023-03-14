@@ -43,5 +43,7 @@ library
        Algebra.Category
        Algebra.Category.Relation
        Algebra.Category.Endo
+       Algebra.Category.Op
+       Algebra.Category.NatTrans
 
        Algebra.Linear
