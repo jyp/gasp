@@ -30,6 +30,13 @@ class AlgebraicKind k where
   data One :: k
   data Zero :: k
 
+
+data Repr :: k -> Type where
+  RPlus :: Repr a -> Repr b -> Repr (a ⊕ b)
+  RTimes :: Repr a -> Repr b -> Repr (a ⊗ b)
+  ROne :: Repr One
+  RZero :: Repr Zero
+
 instance AlgebraicKind Type where
   data x ⊕ y = Inj1 x | Inj2 y deriving (Eq,Ord,Show)
   data x ⊗ y = Pair {π1 :: x, π2 :: y} deriving (Eq,Ord,Show)

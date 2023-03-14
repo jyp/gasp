@@ -20,34 +20,11 @@ module Algebra.Category where
 
 import Algebra.Classes (nameLaw, TestEqual(..), product)
 import Algebra.Types
+import Algebra.Category.Objects
 import qualified Prelude
 import Data.Kind
 import Data.Constraint
 import Test.QuickCheck
-
-type Trivial :: k -> Constraint
-class Trivial x
-instance Trivial x
-
-instance ProdObj Trivial where
-  objprod = Dict
-  objfstsnd = Dict
-  objunit = Dict
-
-instance SumObj Trivial where
-  objsum = Dict
-  objleftright = Dict
-  objzero = Dict
-
-instance ProdObj Finite where
-  objprod = Dict
-  objfstsnd = finiteFstsnd
-  objunit = Dict
-
-instance SumObj Finite where
-  objsum = Dict
-  objleftright = finiteLeftRight
-  objzero = Dict
 
 
 type O2 k a b = (Obj k a, Obj k b)
@@ -82,23 +59,17 @@ law_comp_id n = nameLaw "comp/id" (n . id =.= n)
 law_comp_assoc :: forall {k} (f :: k -> k -> Type) a b c d. (Category f, TestEqual (f a d), O4 f a b c d) => f c d -> f b c -> f a b -> Property
 law_comp_assoc n m o = nameLaw "comp/assoc" (n . (m . o) =.= (n . m) . o)
 
-{-laws_category :: forall {k} (f :: k -> k -> Type). (forall a b. O2 f a b => Arbitrary (f a b), Category f, forall a b. TestEqual (f a b)) => Property
-laws_category = product [property (law_id_comp @f)
+laws_category :: forall {k} (f :: k -> k -> Type). (forall a b. O2 f a b => Arbitrary (f a b), Category f, forall a b. TestEqual (f a b)) => Property
+laws_category = product [property (forallMorphism (law_id_comp @f))
                         ,property (law_comp_id @f)
                         ,property (law_comp_assoc @f)]
--}
+
 
 class Category cat => Dagger cat where
   dagger :: O2 cat a b => a `cat` b -> b `cat` a
 
 (∘) :: forall {k} (cat :: k -> k -> Type) a b c con. (Category cat, con ~ Obj cat, con a, con b, con c) => cat b c -> cat a b -> cat a c
 (∘) = (.) 
-
-type ProdObj :: forall {k}. (k -> Constraint) -> Constraint
-class ProdObj (con :: k -> Constraint) where -- TensorClosed constraint causes problems in the Free module. (probabjy GHC bug)
-  objprod :: (con a, con b) => Dict (con (a⊗b))
-  objfstsnd :: forall z a b. (z ~ (a⊗b), con z) => Dict (con a, con b)
-  objunit :: Dict (con One)
 
 
 class (ProdObj (Obj cat), Category cat) => Monoidal (cat :: k -> k -> Type) where
@@ -114,13 +85,13 @@ class (ProdObj (Obj cat), Category cat) => Monoidal (cat :: k -> k -> Type) wher
   unitorL = swap ∘ unitorR
      \\ objprod @(Obj cat) @a @One
      \\ objprod @(Obj cat) @One @a
-     \\ objunit @(Obj cat)
+     \\ objone @(Obj cat)
 
   default unitorL_ :: forall a. (Braided cat, Obj cat a) => (One ⊗ a) `cat` a 
   unitorL_ = unitorR_ ∘ swap
      \\ objprod @(Obj cat) @a @One
      \\ objprod @(Obj cat) @One @a
-     \\ objunit @(Obj cat)
+     \\ objone @(Obj cat)
 
 
 class Monoidal cat => Braided cat where
@@ -138,16 +109,16 @@ class Monoidal k => Cartesian k where
   {-# MINIMAL exl,exr,dup | exl,exr,(▵) | dis,dup | dis,(▵) #-}
   dis = exr . unitorR
      \\ objprod @(Obj k) @a @One
-     \\ objunit @(Obj k)
+     \\ objone @(Obj k)
   dup = id ▵ id
   exl = unitorR_ . (id ⊗ dis)
           \\ objprod @(Obj k) @a @b
           \\ objprod @(Obj k) @a @One
-          \\ objunit @(Obj k)
+          \\ objone @(Obj k)
   exr = unitorL_ ∘ (dis ⊗ id)
           \\ objprod @(Obj k) @a @b
           \\ objprod @(Obj k) @One @b
-          \\ objunit @(Obj k)
+          \\ objone @(Obj k)
   f ▵ g = (f ⊗ g) ∘ dup 
           \\ objprod @(Obj k) @a @a
           \\ objprod @(Obj k) @b @c 
@@ -157,16 +128,6 @@ cartesianCross :: (Obj k (b1 ⊗ b2), Obj k b3, Obj k c, Obj k b1,
                     k b1 b3 -> k b2 c -> k (b1 ⊗ b2) (b3 ⊗ c)
 cartesianCross a b = (a . exl) ▵ (b . exr)
 
-
-type TensorCon con = forall a b. (con a, con b) => con (a⊗b) :: Constraint
-type LConTensor con = forall a b. con (a⊗b) => con a :: Constraint
-type RConTensor con = forall a b. con (a⊗b) => con a :: Constraint
-
-type SumObj :: forall {k}. (k -> Constraint) -> Constraint
-class SumObj (con :: k -> Constraint) where -- TensorClosed constraint causes problems in the Free module. (probabjy GHC bug)
-  objsum :: (con a, con b) => Dict (con (a⊕b))
-  objleftright :: forall z a b. (z ~ (a⊕b), con z) => Dict (con a, con b)
-  objzero :: Dict (con Zero)
 
 class (SumObj (Obj cat), Category cat) => Monoidal' (cat :: k -> k -> Type) where
   (⊕)      :: (Obj cat a, Obj cat b, Obj cat c, Obj cat d) => (a `cat` b) -> (c `cat` d) -> (a ⊕ c) `cat` (b ⊕ d)
