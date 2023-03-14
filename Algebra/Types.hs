@@ -22,6 +22,7 @@ import Data.Constraint (Dict(..))
 import Data.Functor.Rep
 import Data.Distributive
 import GHC.Generics hiding (Rep)
+import Test.QuickCheck hiding (tabulate,collect)
 
 class AlgebraicKind k where
   data (a::k) ⊕ (b::k) :: k
@@ -38,9 +39,9 @@ data Repr :: k -> Type where
   RZero :: Repr Zero
 
 instance AlgebraicKind Type where
-  data x ⊕ y = Inj1 x | Inj2 y deriving (Eq,Ord,Show)
-  data x ⊗ y = Pair {π1 :: x, π2 :: y} deriving (Eq,Ord,Show)
-  data Dual x = DualType x deriving (Eq,Ord,Show)
+  data x ⊕ y = Inj1 x | Inj2 y deriving (Eq,Ord,Show,Generic)
+  data x ⊗ y = Pair {π1 :: x, π2 :: y} deriving (Eq,Ord,Show,Generic)
+  data Dual x = DualType x deriving (Eq,Ord,Show,Generic)
   data One = Unit deriving (Eq,Ord,Enum,Bounded,Show)
   data Zero deriving (Eq,Ord,Show)
 
@@ -94,6 +95,14 @@ instance Bounded Zero where
 instance Finite Zero where
   typeSize = 0
 
+instance CoArbitrary One where
+  coarbitrary _ = id
+instance CoArbitrary Zero where
+  coarbitrary _ = id
+instance (CoArbitrary f, CoArbitrary g) => CoArbitrary (f ⊕ g) where
+instance (CoArbitrary f, CoArbitrary g) => CoArbitrary (f ⊗ g) where
+
+
 -- | Algebraic structure for (Type -> Type) is in the exponential
 -- level Finitecause functor composition is generally where the action is.
 instance AlgebraicKind (Type -> Type) where
@@ -130,7 +139,14 @@ instance (Representable v, Representable w) => Representable (v ⊕ w) where
     Inj2 i -> index y i
   tabulate f = FunctorProd (tabulate (f . Inj1)) (tabulate (f . Inj2))
 
-
+instance Arbitrary1 One where
+  liftArbitrary = fmap FunctorUnit
+instance Arbitrary1 Zero where
+  liftArbitrary _ = pure FunctorZero
+instance (Arbitrary1 f, Arbitrary1 g) => Arbitrary1 (f ⊕ g) where
+  liftArbitrary g = FunctorProd <$> liftArbitrary g <*> liftArbitrary g
+instance (Arbitrary1 f, Arbitrary1 g) => Arbitrary1 (f ⊗ g) where
+  liftArbitrary g = Comp <$> liftArbitrary (liftArbitrary g)
 
 instance Applicative One where
   pure = FunctorUnit
