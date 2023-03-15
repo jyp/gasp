@@ -7,13 +7,12 @@
 module Algebra.Category.NatTrans where
 
 import Algebra.Category
-import Prelude (Functor(..),flip)
+import Prelude (Functor(..))
 import Algebra.Types
 
 import Data.Kind
 
 newtype NatTrans (f :: Type -> Type) (g :: Type -> Type) = NatTrans (forall x. f x -> g x)
-
 
 instance Category NatTrans where
   type Obj NatTrans = Functor
@@ -23,9 +22,9 @@ instance Category NatTrans where
 instance Monoidal NatTrans where
   assoc_ = NatTrans (Comp . Comp . fmap fromComp . fromComp)
   unitorR_ = NatTrans (fmap fromFunctorUnit . fromComp)
-  NatTrans f ⊗ NatTrans g = NatTrans (\(Comp x) -> Comp (f (fmap g x)))
-  assoc =  NatTrans (\(Comp (Comp x)) -> Comp (fmap Comp x))
-  unitorR = NatTrans (\x -> Comp (fmap FunctorUnit x))
+  NatTrans f ⊗ NatTrans g = NatTrans (Comp . f . fmap g . fromComp)
+  assoc =  NatTrans (Comp . fmap Comp . fromComp . fromComp)
+  unitorR = NatTrans (Comp . fmap FunctorUnit)
   unitorL = NatTrans (Comp . FunctorUnit)
   unitorL_ = NatTrans (fromFunctorUnit . fromComp)
 
@@ -40,4 +39,3 @@ instance Monoidal' NatTrans where
   
 
 
-newtype FMat x f g = FMat (f (g x))
