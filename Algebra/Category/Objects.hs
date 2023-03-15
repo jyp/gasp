@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -24,6 +25,10 @@ import Control.Applicative
 
 type TimesCon con = forall a b. (con a, con b) => con (a⊗b) :: Constraint
 type PlusCon con = forall a b. (con a, con b) => con (a⊕b) :: Constraint
+type TimesCon1 con = forall x a b. (con (a (b x))) => con ((a⊗b) x) :: Constraint
+type PlusCon1 con = forall x a b. (con (a x), con (b x)) => con ((a⊕b) x) :: Constraint
+type OneCon1 (con :: Type -> Constraint) = forall x. con x => con (One x) :: Constraint
+type ZeroCon1 con = forall x. con x => con (Zero x) :: Constraint
 -- type LConTensor con = forall a b. con (a⊗b) => con a :: Constraint
 -- type RConTensor con = forall a b. con (a⊗b) => con a :: Constraint
 
@@ -33,6 +38,16 @@ reprCon = \case
   RTimes a b -> Dict \\ reprCon @con a \\ reprCon @con b
   RZero -> Dict
   ROne -> Dict
+
+reprCon1Comp :: forall (z :: Type) con (a :: Type -> Type) b. Ring1Closed con -> con z => Repr a -> Repr b -> Dict (con (a (b z)))
+reprCon1Comp c@Ring1Closed{..} a b = Dict \\ reprCon1 @(b z) c a \\ reprCon1 @z c b
+
+reprCon1 :: forall (z :: Type) (con :: Type -> Constraint) a. con z => Ring1Closed con -> Repr a -> Dict (con (a z))
+reprCon1 c@Ring1Closed{..} = \case
+  RPlus a b -> plus1Closed \\ reprCon1 @z c a \\ reprCon1 @z c b
+  RTimes a b -> times1Closed \\ reprCon1Comp @z c a b
+  RZero -> zero1Closed
+  ROne -> one1Closed
 
 
 type ProdObj :: forall {k}. (k -> Constraint) -> Constraint
