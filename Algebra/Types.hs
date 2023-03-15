@@ -1,3 +1,5 @@
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
@@ -106,11 +108,26 @@ instance (CoArbitrary f, CoArbitrary g) => CoArbitrary (f ⊗ g) where
 -- | Algebraic structure for (Type -> Type) is in the exponential
 -- level because functor composition is generally where the action is.
 instance AlgebraicKind (Type -> Type) where
-  data (f ⊗ g) x = Comp {fromComp :: (f (g x))} deriving (Foldable, Traversable, Functor, Generic1, Show, Eq)
-  data (f ⊕ g) x = FunctorProd {prodFst :: f x, prodSnd :: g x} deriving (Foldable, Traversable, Functor,Generic1, Show, Eq)
-  data One x = FunctorUnit {fromFunctorUnit :: x} deriving (Foldable, Traversable, Functor, Generic1, Show, Eq)
+  data (f ⊗ g) x = Comp {fromComp :: (f (g x))} deriving (Foldable, Traversable, Functor, Generic1, Eq)
+  data (f ⊕ g) x = FunctorProd {prodFst :: f x, prodSnd :: g x} deriving (Foldable, Traversable, Functor,Generic1,Eq)
+  data One x = FunctorUnit {fromFunctorUnit :: x} deriving (Foldable, Traversable, Functor, Generic1, Eq)
   data Dual f x = FunctorDual {fromFunctorDual :: f x} deriving (Foldable, Traversable, Functor, Generic1, Show, Eq)
-  data Zero x = FunctorZero deriving (Foldable, Traversable, Functor, Generic1, Show, Eq)
+  data Zero x = FunctorZero deriving (Foldable, Traversable, Functor, Generic1, Eq)
+
+deriving instance Show (Zero (x :: Type))
+deriving instance Show x => Show (One (x :: Type))
+deriving instance (Show (a x), Show (b x)) => Show ((a⊕b) (x :: Type))
+deriving instance (Show (a (b x))) => Show ((a⊗b) (x :: Type))
+
+data Ring1Closed con = Ring1Closed {
+  zero1Closed :: forall (x :: Type). Dict (con (Zero x)),
+  one1Closed :: forall (x :: Type). con x => Dict (con (One x)),
+  plus1Closed :: forall a b (x :: Type). (con (a x), con (b x)) => Dict (con ((a⊕b) x)),
+  times1Closed :: forall a b (x :: Type). (con (a (b x))) => Dict (con ((a⊗b) x))
+                          }
+
+showRing1Closed :: Ring1Closed Show
+showRing1Closed = Ring1Closed Dict Dict Dict Dict
 
 instance Distributive Zero where
   distribute _ = FunctorZero
