@@ -354,7 +354,12 @@ instance (TestEqual s, Arbitrary s, Arbitrary1 a, Arbitrary1 b,Show (a (b s)), V
 
 
 prop_laws :: Property
-prop_laws = laws_category @(Mat Int)
+prop_laws = laws_category @(Mat Int) $ \tx ty -> Dict
+  \\ reprCon1Comp @Int showRing1Closed tx ty
+  \\ reprCon @Arbitrary1 tx
+  \\ reprCon @Arbitrary1 ty
+  \\ reprCon @VectorR tx
+  \\ reprCon @VectorR ty
 
 
 return []

@@ -65,14 +65,14 @@ forallObj k = forallType (\t -> k t \\ reprCon @con t)
 
 forallMorphism' :: forall {k} (f :: k -> k -> Type) {con :: k -> Constraint}  .
                   (Obj f ~ con,
-                   forall α β. (con α, con β) => Arbitrary (f α β),
-                   forall α β. (con α, con β) => Show (f α β),
                    con One, con Zero, TimesCon con, PlusCon con)
-               => (forall x y. (con x, con y) => Repr x -> Repr y -> f x y -> Property) -> Property
-forallMorphism' p = forallObj @f (\t1 -> 
-                    forallObj @f (\t2 -> 
-                    forallMorphism @f t1 t2 (\f ->
-                    p t1 t2 f)))
+               => TestableCat f -> (forall x y. (con x, con y, TT f x y) => Repr x -> Repr y -> f x y -> Property) -> Property
+forallMorphism' tc p
+  = forallObj @f (\t1 -> 
+    forallObj @f (\t2 ->
+    tc t1 t2 //
+    forallMorphism @f t1 t2 (\f ->
+    p t1 t2 f)))
 
 
 law_comp_id :: forall {k} (f :: k -> k -> Type) a b. (Category f, TestEqual (f a b), O2 f a b) => f a b -> Property
@@ -87,8 +87,7 @@ law_comp_assoc' :: forall {k} (f :: k -> k -> Type) {con}.
    -- forall α β. (con α, con β) => Show (f α β),
    con One, con Zero, TimesCon con, PlusCon con,
    con ~ Obj f, Category f)
-                =>
-                (forall x y . Repr x -> Repr y -> Dict (Arbitrary (f x y), Show (f x y), TestEqual (f x y)) ) ->
+  => TestableCat f ->
   Property
 law_comp_assoc' arb
   = forallObj @f (\t1 ->
@@ -103,17 +102,20 @@ law_comp_assoc' arb
 (//) :: Dict c -> (c => k) -> k
 Dict // k = k
 
+type TT f x y = (Arbitrary (f x y), Show (f x y), TestEqual (f x y))
+type TestableCat f = forall x y . Repr x -> Repr y -> Dict (TT f x y) 
+
+
 laws_category :: forall {k} (f :: k -> k -> Type) {con}.
                  (
                  -- forall x y. (con x, con y) => TestEqual (f x y),
                    con One, con Zero, TimesCon con, PlusCon con,
                    con ~ Obj f, Category f)
-              =>   (forall x y . Repr x -> Repr y -> Dict (Arbitrary (f x y), Show (f x y), TestEqual (f x y)) ) ->
+              =>   TestableCat f ->
                  Property
-laws_category = product [forallMorphism' @f (\_ _ f -> property (law_id_comp f))
-                        ,forallMorphism' @f (\_ _ f -> property (law_comp_id f))
-                        ,law_comp_assoc' @f _
-                        ]
+laws_category tc = product [forallMorphism' @f tc (\_ _ f -> property (law_id_comp f))
+                           ,forallMorphism' @f tc (\_ _ f -> property (law_comp_id f))
+                           ,law_comp_assoc' tc]
 
 
 class Category cat => Dagger cat where
