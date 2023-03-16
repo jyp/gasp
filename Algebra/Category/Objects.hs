@@ -25,6 +25,8 @@ import Control.Applicative
 
 type TimesCon con = forall a b. (con a, con b) => con (a⊗b) :: Constraint
 type PlusCon con = forall a b. (con a, con b) => con (a⊕b) :: Constraint
+type Con' x con = forall a b. (con a, con b) => con (a `x` b) :: Constraint
+
 type TimesCon1 con = forall x a b. (con (a (b x))) => con ((a⊗b) x) :: Constraint
 type PlusCon1 con = forall x a b. (con (a x), con (b x)) => con ((a⊕b) x) :: Constraint
 type OneCon1 (con :: Type -> Constraint) = forall x. con x => con (One x) :: Constraint

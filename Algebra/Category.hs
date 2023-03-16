@@ -1,3 +1,5 @@
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE LambdaCase #-}
@@ -125,52 +127,49 @@ class Category cat => Dagger cat where
 (∘) = (.) 
 
 
-class ({-ProdObj (Obj cat), -}Category cat) => Monoidal (cat :: k -> k -> Type) where
-  (⊗)      :: (Obj cat a, Obj cat b, Obj cat c, Obj cat d) => (a `cat` b) -> (c `cat` d) -> (a ⊗ c) `cat` (b ⊗ d)
-  assoc    :: (Obj cat a, Obj cat b, Obj cat c) => ((a ⊗ b) ⊗ c) `cat` (a ⊗ (b ⊗ c))
-  assoc_   :: (Obj cat a, Obj cat b, Obj cat c) => (a ⊗ (b ⊗ c)) `cat` ((a ⊗ b) ⊗ c)
-  unitorR   :: (Obj cat a) => a `cat` (a ⊗ One)
-  unitorR_  :: (Obj cat a) => (a ⊗ One) `cat` a
-  unitorL   :: (Obj cat a, Obj cat One) => a `cat` (One ⊗ a)
-  unitorL_  :: (Obj cat a, Obj cat One) => (One ⊗ a) `cat` a
+class ({-ProdObj (Obj cat), -}Category cat) => Monoidal (x :: k -> k -> k) i (cat :: k -> k -> Type) | x -> i, i -> x where
+  (⊗)      :: (Obj cat a, Obj cat b, Obj cat c, Obj cat d) => (a `cat` b) -> (c `cat` d) -> (a `x` c) `cat` (b `x` d)
+  assoc    :: (Obj cat a, Obj cat b, Obj cat c) => ((a `x` b) `x` c) `cat` (a `x` (b `x` c))
+  assoc_   :: (Obj cat a, Obj cat b, Obj cat c) => (a `x` (b `x` c)) `cat` ((a `x` b) `x` c)
+  unitorR   :: (Obj cat a) => a `cat` (a `x` i)
+  unitorR_  :: (Obj cat a) => (a `x` i) `cat` a
+  unitorL   :: (Obj cat a, Obj cat i) => a `cat` (i `x` a)
+  unitorL_  :: (Obj cat a, Obj cat i) => (i `x` a) `cat` a
 
-  default unitorL :: forall a con. (con ~ Obj cat, con One, TimesCon con, Braided cat, Obj cat a) => a `cat` (One ⊗ a)
+  default unitorL :: forall a con. (con ~ Obj cat, con i, Con' x con, Braided x i cat, Obj cat a) => a `cat` (i `x` a)
   unitorL = swap ∘ unitorR
-
-  default unitorL_ :: forall a con. (con ~ Obj cat, Braided cat, con One, TimesCon con, Obj cat a) => (One ⊗ a) `cat` a 
+  default unitorL_ :: forall a con. (con ~ Obj cat, Braided x i cat, con i, Con' x con, Obj cat a) => (i `x` a) `cat` a 
   unitorL_ = unitorR_ ∘ swap
+class Monoidal x i cat => Braided x i cat where
+  swap     :: (Obj cat a, Obj cat b) => (a `x` b) `cat` (b `x` a)
 
+class Braided x i cat => Symmetric x i cat
 
-class Monoidal cat => Braided cat where
-  swap     :: (Obj cat a, Obj cat b) => (a ⊗ b) `cat` (b ⊗ a)
-
-class Braided cat => Symmetric cat
-
-class Monoidal cat => Cartesian cat where
-  exl   ::   forall a b. O2 cat a b                     =>    (a ⊗ b) `cat` a
-  exr   ::   forall a b. O2 cat a b                     =>    (a ⊗ b) `cat` b
-  dis   ::   forall a.  Obj cat a                       =>    a `cat` One
-  dup   ::   forall a. Obj cat a                        =>    a `cat` (a ⊗ a)
-  (▵)   ::   forall a b c. (Obj cat a,Obj cat b, Obj cat c) =>    (a `cat` b) -> (a `cat` c) -> a `cat` (b ⊗ c)
-
+class Monoidal x i cat => Cartesian x i cat where
   {-# MINIMAL exl,exr,dup | exl,exr,(▵) | dis,dup | dis,(▵) #-}
-  default dis :: forall a con. (con ~ Obj cat, con One, TimesCon con, Obj cat a) => a `cat` One
+  exl   ::   forall a b. O2 cat a b                     =>    (a `x` b) `cat` a
+  exr   ::   forall a b. O2 cat a b                     =>    (a `x` b) `cat` b
+  dis   ::   forall a.  Obj cat a                       =>    a `cat` i
+  dup   ::   forall a. Obj cat a                        =>    a `cat` (a `x` a)
+  (▵)   ::   forall a b c. (Obj cat a,Obj cat b, Obj cat c) =>    (a `cat` b) -> (a `cat` c) -> a `cat` (b `x` c)
+  default dis :: forall a con. (con ~ Obj cat, con i, Con' x con, Obj cat a) => a `cat` i
   dis = exr . unitorR
-  default dup :: forall a con. (con ~ Obj cat, con One, TimesCon con, Obj cat a) => a `cat` (a⊗a)
+  default dup :: forall a con. (con ~ Obj cat, con i, Con' x con, Obj cat a) => a `cat` (a `x` a)
   dup = id ▵ id
-  default exl :: forall a b con. (con ~ Obj cat, con One, TimesCon con, con a, con b) =>  (a ⊗ b) `cat` a
+  default exl :: forall a b con. (con ~ Obj cat, con i, Con' x con, con a, con b) =>  (a `x` b) `cat` a
   exl = unitorR_ . (id ⊗ dis)
-  default exr :: forall a b con. (con ~ Obj cat, con One, TimesCon con, con a, con b) =>  (a ⊗ b) `cat` b
+  default exr :: forall a b con. (con ~ Obj cat, con i, Con' x con, con a, con b) =>  (a `x` b) `cat` b
   exr = unitorL_ ∘ (dis ⊗ id)
-  default (▵)   ::   forall a b c con. (con ~ Obj cat, con One, TimesCon con, Obj cat a,Obj cat b, Obj cat c) =>    (a `cat` b) -> (a `cat` c) -> a `cat` (b ⊗ c)
+  default (▵)   ::   forall a b c con. (con ~ Obj cat, con i, Con' x con, Obj cat a,Obj cat b, Obj cat c) =>    (a `cat` b) -> (a `cat` c) -> a `cat` (b `x` c)
   f ▵ g = (f ⊗ g) ∘ dup 
 
-cartesianCross :: (Obj k (b1 ⊗ b2), Obj k b3, Obj k c, Obj k b1,
-                     Obj k b2, Cartesian k) =>
-                    k b1 b3 -> k b2 c -> k (b1 ⊗ b2) (b3 ⊗ c)
+cartesianCross :: (Obj k (b1 `x` b2), Obj k b3, Obj k c, Obj k b1,
+                     Obj k b2, Cartesian x i k) =>
+                    k b1 b3 -> k b2 c -> k (b1 `x` b2) (b3 `x` c)
 cartesianCross a b = (a . exl) ▵ (b . exr)
 
 
+{-
 class (Category cat) => Monoidal' (cat :: k -> k -> Type) where
   (⊕)      :: (Obj cat a, Obj cat b, Obj cat c, Obj cat d) => (a `cat` b) -> (c `cat` d) -> (a ⊕ c) `cat` (b ⊕ d)
   assoc'    :: (Obj cat a, Obj cat b, Obj cat c) => ((a ⊕ b) ⊕ c) `cat` (a ⊕ (b ⊕ c))
@@ -185,37 +184,21 @@ class (Category cat) => Monoidal' (cat :: k -> k -> Type) where
   default unitorL_' :: forall a con. (con ~ Obj cat, Braided' cat, con Zero, PlusCon con, Obj cat a) => (Zero ⊕ a) `cat` a 
   unitorL_' = unitorR_' ∘ swap'
 
+
 class Monoidal' cat => Braided' cat where
   swap'     :: (Obj cat a, Obj cat b) => (a ⊕ b) `cat` (b ⊕ a)
 class Braided' cat => Symmetric' cat
-
-type Cartesian' :: forall {k}. (k -> k -> Type) -> Constraint
-class Monoidal' cat => Cartesian' cat where
-  exl'  ::   forall a b. O2 cat a b                     =>    (a ⊕ b) `cat` a
-  exr'  ::   forall a b. O2 cat a b                     =>    (a ⊕ b) `cat` b
-  dis'  ::   forall a.   Obj cat a                      =>    a `cat` Zero
-  dup'  ::   (Obj cat a)                   =>    a `cat` (a ⊕ a)
-  (▴)   ::   forall a b c. (Obj cat a,Obj cat b, Obj cat c) =>    (a `cat` b) -> (a `cat` c) -> a `cat` (b ⊕ c)
-
-  {-# MINIMAL exl',exr',dup' | exl',exr',(▴) | dis',dup' | dis',(▴) #-}
-  default dis' :: forall a con. (con ~ Obj cat, con Zero, PlusCon con, Obj cat a) => a `cat` Zero
-  dis' = exr' . unitorR'
-  default dup' :: forall a con. (con ~ Obj cat, con Zero, PlusCon con, Obj cat a) => a `cat` (a⊕a)
-  dup' = id ▴ id
-  default exl' :: forall a b con. (con ~ Obj cat, con Zero, PlusCon con, con a, con b) =>  (a ⊕ b) `cat` a
-  exl' = unitorR_' . (id ⊕ dis')
-  default exr' :: forall a b con. (con ~ Obj cat, con Zero, PlusCon con, con a, con b) =>  (a ⊕ b) `cat` b
-  exr' = unitorL_' ∘ (dis' ⊕ id)
-  default (▴)   ::   forall a b c con. (con ~ Obj cat, con Zero, PlusCon con, Obj cat a,Obj cat b, Obj cat c) =>    (a `cat` b) -> (a `cat` c) -> a `cat` (b ⊕ c)
-  f ▴ g = (f ⊕ g) ∘ dup'
+-}
 
 
-class Monoidal' k => CoCartesian' k where
-  inl'   ::  O2 k a b                                 =>  a `k` (a ⊕ b)
-  inr'   ::  O2 k a b                                 =>  b `k` (a ⊕ b)
-  new'   ::  forall a. (Obj k a)                      =>  Zero `k` a
-  jam'   ::  Obj k a                                  =>  (a ⊕ a) `k` a
-  (▾)    ::  forall a b c. (Obj k a,Obj k b, Obj k c) =>  (b `k` a) -> (c `k` a) -> (b ⊕ c) `k` a
+
+class Monoidal x i k => CoCartesian x i k where
+  inl   ::  O2 k a b                                 =>  a `k` (a `x` b)
+  inr   ::  O2 k a b                                 =>  b `k` (a `x` b)
+  new   ::  forall a. (Obj k a)                      =>  i `k` a
+  jam   ::  Obj k a                                  =>  (a `x` a) `k` a
+  (▿)    ::  forall a b c. (Obj k a,Obj k b, Obj k c) =>  (b `k` a) -> (c `k` a) -> (b `x` c) `k` a
+
 
 
 
@@ -229,53 +212,54 @@ instance Category (->) where
   (.) = (Prelude..)
   id = Prelude.id
 
-instance Monoidal (->) where
+instance Monoidal (⊗) One (->) where
   (f ⊗ g) (x `Pair` y) = (f x `Pair` g y)
   assoc ((x `Pair` y) `Pair` z) = (x `Pair` (y `Pair` z)) 
   assoc_ (x `Pair` (y `Pair` z)) = ((x `Pair` y) `Pair` z)  
   unitorR x = (x `Pair` Unit)
   unitorR_ (x `Pair` Unit) = x
 
-instance Braided (->) where
+instance Braided (⊗) One (->) where
   swap (x `Pair` y) = (y `Pair` x)
-instance Symmetric (->)
+instance Symmetric (⊗) One (->)
 
-instance Monoidal' (->) where
-  f ⊕ g = \case
+instance Monoidal (⊕) Zero (->) where
+  f ⊗ g = \case
     Inj1 x -> Inj1 (f x)
     Inj2 x -> Inj2 (g x)
-  assoc' = \case
+  assoc = \case
     Inj1 (Inj1 x) -> Inj1 x
     Inj1 (Inj2 x) -> Inj2 (Inj1 x)
     Inj2 x -> Inj2 (Inj2 x)
-  assoc_' = \case
+  assoc_ = \case
     (Inj1 x) -> (Inj1 (Inj1 x)) 
     (Inj2 (Inj1 x)) -> (Inj1 (Inj2 x)) 
     (Inj2 (Inj2 x)) -> (Inj2 x) 
-  unitorR' x = Inj1 x
-  unitorR_' = \case
+  unitorR x = Inj1 x
+  unitorR_ = \case
     Inj1 x -> x
     Inj2 x -> case x of
 
-instance Braided' (->) where
-  swap' = \case
+instance Braided (⊕) Zero (->) where
+  swap = \case
     Inj1 x -> Inj2 x
     Inj2 x -> Inj1 x
 
-instance Cartesian (->) where
+instance Cartesian (⊗) One (->) where
   dup x = Pair x x
   exr (Pair _ x) = x
   exl (Pair x _) = x
   (f ▵ g) x = f x `Pair` g x
   dis _ = Unit
 
-instance CoCartesian' (->) where
-  inl' = Inj1
-  inr' = Inj2
-  new' = \case
-  f ▾ g = \case
+instance CoCartesian (⊕) Zero (->) where
+  inl = Inj1
+  inr = Inj2
+  new = \case
+  f ▿ g = \case
      Inj1 x -> f x
      Inj2 y -> g y
-  jam' = \case
+  jam = \case
      Inj1 x -> x
      Inj2 x -> x
+

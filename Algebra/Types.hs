@@ -26,13 +26,16 @@ import Data.Distributive
 import GHC.Generics hiding (Rep)
 import Test.QuickCheck hiding (tabulate,collect)
 
-class AlgebraicKind k where
+class SumKind k where
   data (a::k) ⊕ (b::k) :: k
-  data (a::k) ⊗ (b::k) :: k
-  data Dual (a::k) :: k
-  data One :: k
   data Zero :: k
 
+class ProdKind k where
+  data (a::k) ⊗ (b::k) :: k
+  data One :: k
+
+class DualKind k where
+  data Dual (a::k) :: k
 
 data Repr :: k -> Type where
   RPlus :: Repr a -> Repr b -> Repr (a ⊕ b)
@@ -40,12 +43,17 @@ data Repr :: k -> Type where
   ROne :: Repr One
   RZero :: Repr Zero
 
-instance AlgebraicKind Type where
+instance SumKind Type where
   data x ⊕ y = Inj1 x | Inj2 y deriving (Eq,Ord,Show,Generic)
-  data x ⊗ y = Pair {π1 :: x, π2 :: y} deriving (Eq,Ord,Show,Generic)
-  data Dual x = DualType x deriving (Eq,Ord,Show,Generic)
-  data One = Unit deriving (Eq,Ord,Enum,Bounded,Show)
   data Zero deriving (Eq,Ord,Show)
+
+instance ProdKind Type where
+  data x ⊗ y = Pair {π1 :: x, π2 :: y} deriving (Eq,Ord,Show,Generic)
+  data One = Unit deriving (Eq,Ord,Enum,Bounded,Show)
+
+instance DualKind Type where
+  data Dual x = DualType x deriving (Eq,Ord,Show,Generic)
+
 
 inhabitants :: Finite a => [a]
 inhabitants = [minBound..maxBound]
@@ -107,12 +115,16 @@ instance (CoArbitrary f, CoArbitrary g) => CoArbitrary (f ⊗ g) where
 
 -- | Algebraic structure for (Type -> Type) is in the exponential
 -- level because functor composition is generally where the action is.
-instance AlgebraicKind (Type -> Type) where
-  data (f ⊗ g) x = Comp {fromComp :: (f (g x))} deriving (Foldable, Traversable, Functor, Generic1, Eq)
+instance SumKind (Type -> Type) where
   data (f ⊕ g) x = FunctorProd {prodFst :: f x, prodSnd :: g x} deriving (Foldable, Traversable, Functor,Generic1,Eq)
-  data One x = FunctorUnit {fromFunctorUnit :: x} deriving (Foldable, Traversable, Functor, Generic1, Eq)
-  data Dual f x = FunctorDual {fromFunctorDual :: f x} deriving (Foldable, Traversable, Functor, Generic1, Show, Eq)
   data Zero x = FunctorZero deriving (Foldable, Traversable, Functor, Generic1, Eq)
+  
+instance ProdKind (Type -> Type) where
+  data (f ⊗ g) x = Comp {fromComp :: (f (g x))} deriving (Foldable, Traversable, Functor, Generic1, Eq)
+  data One x = FunctorUnit {fromFunctorUnit :: x} deriving (Foldable, Traversable, Functor, Generic1, Eq)
+
+instance DualKind (Type -> Type) where
+  data Dual f x = FunctorDual {fromFunctorDual :: f x} deriving (Foldable, Traversable, Functor, Generic1, Show, Eq)
 
 deriving instance Show (Zero (x :: Type))
 deriving instance Show x => Show (One (x :: Type))

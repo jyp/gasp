@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RankNTypes #-}
@@ -19,7 +20,7 @@ instance Category NatTrans where
   NatTrans f . NatTrans g = NatTrans (f ∘ g)
   id = NatTrans id
 
-instance Monoidal NatTrans where
+instance Monoidal (⊗) One NatTrans where
   assoc_ = NatTrans (Comp . Comp . fmap fromComp . fromComp)
   unitorR_ = NatTrans (fmap fromFunctorUnit . fromComp)
   NatTrans f ⊗ NatTrans g = NatTrans (Comp . f . fmap g . fromComp)
@@ -28,14 +29,14 @@ instance Monoidal NatTrans where
   unitorL = NatTrans (Comp . FunctorUnit)
   unitorL_ = NatTrans (fromFunctorUnit . fromComp)
 
-instance Monoidal' NatTrans where
-  assoc' = NatTrans (\(FunctorProd (FunctorProd x y) z) -> FunctorProd x (FunctorProd y z))
-  assoc_' = NatTrans (\(FunctorProd x (FunctorProd y z)) -> (FunctorProd (FunctorProd x y) z))
-  unitorR' = NatTrans (\x -> FunctorProd x FunctorZero)
-  unitorR_' = NatTrans (\(FunctorProd x _) -> x)
-  unitorL' = NatTrans (FunctorProd FunctorZero)
-  unitorL_' = NatTrans (\(FunctorProd _ x) -> x)
-  NatTrans f ⊕ NatTrans g = NatTrans (\(FunctorProd x y) ->  FunctorProd (f x) (g y))
+instance Monoidal (⊕) Zero NatTrans where
+  assoc = NatTrans (\(FunctorProd (FunctorProd x y) z) -> FunctorProd x (FunctorProd y z))
+  assoc_ = NatTrans (\(FunctorProd x (FunctorProd y z)) -> (FunctorProd (FunctorProd x y) z))
+  unitorR = NatTrans (\x -> FunctorProd x FunctorZero)
+  unitorR_ = NatTrans (\(FunctorProd x _) -> x)
+  unitorL = NatTrans (FunctorProd FunctorZero)
+  unitorL_ = NatTrans (\(FunctorProd _ x) -> x)
+  NatTrans f ⊗ NatTrans g = NatTrans (\(FunctorProd x y) ->  FunctorProd (f x) (g y))
   
 
 

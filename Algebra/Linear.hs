@@ -231,7 +231,7 @@ instance Ring s => Category (Mat s) where
 fromRel :: (VectorR a, VectorR b) => Rel s (Rep a) (Rep b) -> Mat s a b
 fromRel (Rel f) = Mat (tabulate (\i -> tabulate (\j -> f i j)))
   
-instance Ring s => Monoidal (Mat s) where
+instance Ring s => Monoidal (⊗) One (Mat s) where
   assoc = fromRel assoc
   assoc_ = fromRel assoc_
   unitorR = fromRel unitorR
@@ -239,31 +239,31 @@ instance Ring s => Monoidal (Mat s) where
   Mat f ⊗ Mat g = Mat (Comp (fmap (\x -> fmap Comp  (fmap (\y -> liftA2 (liftA2 (*)) (fmap pure x) (pure y)) g)) f))
 
 
-instance Ring s => Braided (Mat s) where
+instance Ring s => Braided (⊗) One (Mat s) where
   swap = fromRel swap
 
-instance Ring s => Monoidal' (Mat s) where
-  assoc' = fromRel assoc'
-  assoc_' = fromRel assoc_'
-  unitorR' = fromRel unitorR'
-  unitorR_' = fromRel unitorR_'
-  Mat f ⊕ Mat g = Mat (FunctorProd
+instance Ring s => Monoidal (⊕) Zero (Mat s) where
+  assoc = fromRel assoc
+  assoc_ = fromRel assoc_
+  unitorR = fromRel unitorR
+  unitorR_ = fromRel unitorR_
+  Mat f ⊗ Mat g = Mat (FunctorProd
                         ((flip FunctorProd (pure zero)) <$> f)
                         (FunctorProd (pure zero) <$> g))
 
-instance Ring s => Cartesian' (Mat s) where
-  Mat f ▴ Mat g = Mat (FunctorProd <$> f <*> g)
-  dis' = fromRel dis'
+instance Ring s => Cartesian (⊕) Zero (Mat s) where
+  Mat f ▵ Mat g = Mat (FunctorProd <$> f <*> g)
+  dis = fromRel dis
 
-instance Ring s => Braided' (Mat s) where
-  swap' = fromRel swap'
+instance Ring s => Braided (⊕) Zero (Mat s) where
+  swap = fromRel swap
 
-instance Ring s => CoCartesian' (Mat s) where
-  inl' = fromRel inl'
-  inr' = fromRel inr'
-  new' = fromRel new'
-  jam' = fromRel jam'
-  Mat f ▾ Mat g = Mat (FunctorProd f g)
+instance Ring s => CoCartesian (⊕) Zero (Mat s) where
+  inl = fromRel inl
+  inr = fromRel inr
+  new = fromRel new
+  jam = fromRel jam
+  Mat f ▿ Mat g = Mat (FunctorProd f g)
   
 type Mat3x3 s = SqMat V3 s
 type Mat2x2 s = SqMat V2 s
