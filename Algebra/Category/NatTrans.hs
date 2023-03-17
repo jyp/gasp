@@ -32,9 +32,9 @@ instance Monoidal (∘) Id NatTrans where
 instance Monoidal (⊗) One NatTrans where
   assoc = NatTrans (\(FunctorProd (FunctorProd x y) z) -> FunctorProd x (FunctorProd y z))
   assoc_ = NatTrans (\(FunctorProd x (FunctorProd y z)) -> (FunctorProd (FunctorProd x y) z))
-  unitorR = NatTrans (\x -> FunctorProd x FunctorZero)
+  unitorR = NatTrans (\x -> FunctorProd x FunctorOne)
   unitorR_ = NatTrans (\(FunctorProd x _) -> x)
-  unitorL = NatTrans (FunctorProd FunctorZero)
+  unitorL = NatTrans (FunctorProd FunctorOne)
   unitorL_ = NatTrans (\(FunctorProd _ x) -> x)
   NatTrans f ⊗ NatTrans g = NatTrans (\(FunctorProd x y) ->  FunctorProd (f x) (g y))
   

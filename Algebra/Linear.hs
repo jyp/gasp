@@ -111,13 +111,13 @@ class (Foldable f,Applicative f) => IsVec f where
   reifyVec :: f a -> V f a
 
 instance IsVec One where
-  reifyVec FunctorZero = V0
+  reifyVec FunctorOne = V0
 
 instance IsVec f => IsVec (VNext f) where
   reifyVec (VNext xs x) = reifyVec xs :/ x
 
 fromV :: V f a -> f a
-fromV V0 = FunctorZero
+fromV V0 = FunctorOne
 fromV (xs :/ x) = VNext (fromV xs) x
 
 instance IsVec f => Applicative (V f) where
@@ -134,7 +134,7 @@ type V2' = VNext V1'
 type V3' = VNext V2'
 
 pattern V1' :: a -> V1' a
-pattern V1' x = VNext FunctorZero x
+pattern V1' x = VNext FunctorOne x
 pattern V2' :: forall a. a -> a -> V2' a
 pattern V2' x y = VNext (V1' x) y
 pattern V3' :: forall a. a -> a -> a -> V3' a

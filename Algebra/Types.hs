@@ -57,7 +57,6 @@ instance ProdKind Type where
 instance DualKind Type where
   data Dual x = DualType x deriving (Eq,Ord,Show,Generic)
 
-
 inhabitants :: Finite a => [a]
 inhabitants = [minBound..maxBound]
 
@@ -122,9 +121,12 @@ newtype Id x = Id {fromId :: x} deriving (Foldable, Traversable, Functor, Generi
 
 -- instance SumKind (Type -> Type) where
   
+-- instance SumKind (Type -> Type) where
+  -- data (f ⊕ g) x = FunctorProd {prodFst :: f x, prodSnd :: g x} deriving (Foldable, Traversable, Functor,Generic1,Eq)
+
 instance ProdKind (Type -> Type) where
   data (f ⊗ g) x = FunctorProd {prodFst :: f x, prodSnd :: g x} deriving (Foldable, Traversable, Functor,Generic1,Eq)
-  data One x = FunctorZero deriving (Foldable, Traversable, Functor, Generic1, Eq)
+  data One x = FunctorOne deriving (Foldable, Traversable, Functor, Generic1, Eq)
 
 instance DualKind (Type -> Type) where
   data Dual f x = FunctorDual {fromFunctorDual :: f x} deriving (Foldable, Traversable, Functor, Generic1, Show, Eq)
@@ -146,13 +148,13 @@ showCompClosed :: CompClosed Show
 showCompClosed = CompClosed Dict Dict Dict Dict
 
 instance Distributive One where
-  distribute _ = FunctorZero
+  distribute _ = FunctorOne
 instance Distributive Id where
   distribute = Id . fmap fromId
 instance Representable One where
   type Rep One = Zero
-  index FunctorZero = \case
-  tabulate _ = FunctorZero
+  index FunctorOne = \case
+  tabulate _ = FunctorOne
 instance Representable Id where
   type Rep Id = One
   index (Id x) _ = x
@@ -175,7 +177,7 @@ instance (Representable v, Representable w) => Representable (v ⊗ w) where
 instance Arbitrary1 Id where
   liftArbitrary = fmap Id
 instance Arbitrary1 One where
-  liftArbitrary _ = pure FunctorZero
+  liftArbitrary _ = pure FunctorOne
 instance (Arbitrary1 f, Arbitrary1 g) => Arbitrary1 (f ⊗ g) where
   liftArbitrary g = FunctorProd <$> liftArbitrary g <*> liftArbitrary g
 instance (Arbitrary1 f, Arbitrary1 g) => Arbitrary1 (f ∘ g) where
@@ -186,8 +188,8 @@ instance Applicative Id where
   Id f <*> Id x = Id (f x)
   
 instance Applicative One where
-  pure _ = FunctorZero
-  _ <*> _ = FunctorZero
+  pure _ = FunctorOne
+  _ <*> _ = FunctorOne
 
 instance (Applicative f, Applicative g) => Applicative (f ∘ g) where
   Comp f <*> Comp x = Comp ((fmap (<*>) f) <*> x)
