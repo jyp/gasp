@@ -160,36 +160,23 @@ cartesianCross :: (Obj k (b1 `x` b2), Obj k b3, Obj k c, Obj k b1,
                     k b1 b3 -> k b2 c -> k (b1 `x` b2) (b3 `x` c)
 cartesianCross a b = (a . exl) ▵ (b . exr)
 
-
-{-
-class (Category cat) => Monoidal' (cat :: k -> k -> Type) where
-  (⊕)      :: (Obj cat a, Obj cat b, Obj cat c, Obj cat d) => (a `cat` b) -> (c `cat` d) -> (a ⊕ c) `cat` (b ⊕ d)
-  assoc'    :: (Obj cat a, Obj cat b, Obj cat c) => ((a ⊕ b) ⊕ c) `cat` (a ⊕ (b ⊕ c))
-  assoc_'   :: (Obj cat a, Obj cat b, Obj cat c) => (a ⊕ (b ⊕ c)) `cat` ((a ⊕ b) ⊕ c)
-  unitorR'   :: (Obj cat a) => a `cat` (a ⊕ Zero)
-  unitorR_'  :: (Obj cat a) => (a ⊕ Zero) `cat` a
-  unitorL'   :: (Obj cat a, Obj cat Zero) => a `cat` (Zero ⊕ a)
-  unitorL_'  :: (Obj cat a, Obj cat Zero) => (Zero ⊕ a) `cat` a
-
-  default unitorL' :: forall a con. (con ~ Obj cat, con Zero, PlusCon con, Braided' cat, Obj cat a) => a `cat` (Zero ⊕ a)
-  unitorL' = swap' ∘ unitorR'
-  default unitorL_' :: forall a con. (con ~ Obj cat, Braided' cat, con Zero, PlusCon con, Obj cat a) => (Zero ⊕ a) `cat` a 
-  unitorL_' = unitorR_' ∘ swap'
-
-
-class Monoidal' cat => Braided' cat where
-  swap'     :: (Obj cat a, Obj cat b) => (a ⊕ b) `cat` (b ⊕ a)
-class Braided' cat => Symmetric' cat
--}
-
-
-
-class Monoidal x i k => CoCartesian x i k where
-  inl   ::  O2 k a b                                 =>  a `k` (a `x` b)
-  inr   ::  O2 k a b                                 =>  b `k` (a `x` b)
-  new   ::  forall a. (Obj k a)                      =>  i `k` a
-  jam   ::  Obj k a                                  =>  (a `x` a) `k` a
-  (▿)    ::  forall a b c. (Obj k a,Obj k b, Obj k c) =>  (b `k` a) -> (c `k` a) -> (b `x` c) `k` a
+class Monoidal x i cat => CoCartesian x i cat where
+  {-# MINIMAL inl,inr,jam | inl,inr,(▿) | new,jam | new,(▿) #-}
+  inl   ::  O2 cat a b                                 =>  a `cat` (a `x` b)
+  inr   ::  O2 cat a b                                 =>  b `cat` (a `x` b)
+  new   ::  forall a. (Obj cat a)                      =>  i `cat` a
+  jam   ::  Obj cat a                                  =>  (a `x` a) `cat` a
+  (▿)    ::  forall a b c. (Obj cat a,Obj cat b, Obj cat c) =>  (b `cat` a) -> (c `cat` a) -> (b `x` c) `cat` a
+  default new :: forall a con. (con ~ Obj cat, con i, Con' x con, Obj cat a) => i `cat` a 
+  new = unitorR_ . inr
+  default jam :: forall a con. (con ~ Obj cat, con i, Con' x con, Obj cat a) => (a `x` a) `cat` a 
+  jam = id ▿ id
+  default inl :: forall a b con. (con ~ Obj cat, con i, Con' x con, con a, con b) => a `cat` (a `x` b) 
+  inl = (id ⊗ new) . unitorR 
+  default inr :: forall a b con. (con ~ Obj cat, con i, Con' x con, con a, con b) => b `cat`  (a `x` b)
+  inr = (new ⊗ id) ∘ unitorL
+  default (▿)   ::   forall a b c con. (con ~ Obj cat, con i, Con' x con, Obj cat a,Obj cat b, Obj cat c) =>    (b `cat` a) -> (c `cat` a) -> (b `x` c) `cat` a
+  f ▿ g = jam ∘ (f ⊗ g) 
 
 
 
