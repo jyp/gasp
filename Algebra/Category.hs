@@ -127,7 +127,7 @@ class Monoidal x i cat => Braided x i cat where
 
 class Braided x i cat => Symmetric x i cat
 
-class Monoidal x i cat => Cartesian x i cat where
+class Symmetric x i cat => Cartesian x i cat where
   {-# MINIMAL exl,exr,dup | exl,exr,(▵) | dis,dup | dis,(▵) #-}
   exl   ::   forall a b. O2 cat a b                     =>    (a `x` b) `cat` a
   exr   ::   forall a b. O2 cat a b                     =>    (a `x` b) `cat` b
@@ -145,12 +145,23 @@ class Monoidal x i cat => Cartesian x i cat where
   default (▵)   ::   forall a b c con. (con ~ Obj cat, con i, Con' x con, Obj cat a,Obj cat b, Obj cat c) =>    (a `cat` b) -> (a `cat` c) -> a `cat` (b `x` c)
   f ▵ g = (f ⊗ g) ∘ dup 
 
-cartesianCross :: (Obj k (b1 `x` b2), Obj k b3, Obj k c, Obj k b1,
-                     Obj k b2, Cartesian x i k) =>
-                    k b1 b3 -> k b2 c -> k (b1 `x` b2) (b3 `x` c)
+cartesianCross :: (Obj k (b1 `x` b2), Obj k b3, Obj k c, Obj k b1, Obj k b2, Cartesian x i k) => k b1 b3 -> k b2 c -> k (b1 `x` b2) (b3 `x` c)
 cartesianCross a b = (a . exl) ▵ (b . exr)
 
-class Monoidal x i cat => CoCartesian x i cat where
+cartesianUnitor :: forall a k x i. (Obj k a, Obj k i, Cartesian x i k) => a `k` (a `x` i)
+cartesianUnitor = id ▵ dis
+cartesianUnitor_ :: forall a k x i. (Obj k a, Obj k i, Cartesian x i k) => (a `x` i) `k` a
+cartesianUnitor_ = exl
+cartesianSwap :: forall a b k x i con. (Obj k a, Obj k b, Cartesian x i k, Con' x con, con ~ Obj k) => (a `x` b) `k` (b `x` a)
+cartesianSwap = exr ▵ exl
+cartesianAssoc :: forall a b x i c k con. (Obj k a, Obj k b, Obj k c, Cartesian x i k, Con' x con, con ~ Obj k) => ((a `x` b) `x` c) `k` (a `x` (b `x` c))
+cartesianAssoc = (exl . exl) ▵ ((exr . exl) ▵ exr)
+cartesianAssoc_ :: forall a b x i c k con. (Obj k a, Obj k b, Obj k c, Cartesian x i k, Con' x con, con ~ Obj k) => (a `x` (b `x` c)) `k` ((a `x` b) `x` c)
+cartesianAssoc_ = (exl ▵ (exl . exr)) ▵ (exr . exr)
+
+
+
+class Symmetric x i cat => CoCartesian x i cat where
   {-# MINIMAL inl,inr,jam | inl,inr,(▿) | new,jam | new,(▿) #-}
   inl   ::  O2 cat a b                                 =>  a `cat` (a `x` b)
   inr   ::  O2 cat a b                                 =>  b `cat` (a `x` b)
@@ -208,6 +219,7 @@ instance Monoidal (⊕) Zero (->) where
     Inj1 x -> x
     Inj2 x -> case x of
 
+instance Symmetric (⊕) Zero (->) where
 instance Braided (⊕) Zero (->) where
   swap = \case
     Inj1 x -> Inj2 x
