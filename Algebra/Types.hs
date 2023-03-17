@@ -119,10 +119,9 @@ deriving instance (Functor f, Functor g) => Functor (f ∘ g)
 deriving instance (Traversable f, Traversable g) => Traversable (f ∘ g)
 newtype Id x = Id {fromId :: x} deriving (Foldable, Traversable, Functor, Generic1, Eq)
 
--- instance SumKind (Type -> Type) where
-  
--- instance SumKind (Type -> Type) where
-  -- data (f ⊕ g) x = FunctorProd {prodFst :: f x, prodSnd :: g x} deriving (Foldable, Traversable, Functor,Generic1,Eq)
+instance SumKind (Type -> Type) where
+  data (f ⊕ g) x = FunctorInj1 (f x) | FunctorInj2 (g x) deriving (Foldable, Traversable, Functor,Generic1,Eq)
+  data Zero x deriving (Foldable, Traversable, Functor,Generic1,Eq)
 
 instance ProdKind (Type -> Type) where
   data (f ⊗ g) x = FunctorProd {prodFst :: f x, prodSnd :: g x} deriving (Foldable, Traversable, Functor,Generic1,Eq)
