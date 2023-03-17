@@ -46,6 +46,10 @@ type VectorSpace scalar a = (Field scalar, Module scalar a, Group a)
 -- So we'd be better off using the following definition:
 
 -- | Representation of vector as traversable functor
+-- ... but this is missing the link with *^ for module.  We should be
+-- able to add forall s. PreRing s => Module s (v s), but this creates
+-- problems when defining instances.
+
 class (Finite (Rep v),Representable v, Foldable v, Applicative v) => VectorR v where
   vectorSplit :: (v ~ (f ⊗ g)) => Dict (VectorR f, VectorR g)
   vectorSplit = error "vectorSplit: not product type"
@@ -53,15 +57,15 @@ class (Finite (Rep v),Representable v, Foldable v, Applicative v) => VectorR v w
   vectorCut = error "vectorCut: not sum type"
 
 instance (VectorR v, VectorR w) => VectorR (v ⊗ w) where
-  vectorSplit = Dict
+  -- vectorSplit = Dict
 
-instance (VectorR v, VectorR w) => VectorR (v ⊕ w) where
-  vectorCut = Dict
+instance (VectorR v, VectorR w) => VectorR (v ∘ w) where
+  -- vectorCut = Dict
 
 instance (VectorR One)
-instance (VectorR Zero)
+instance (VectorR Id)
 
-instance SumObj VectorR where
+{-instance SumObj VectorR where
   objsum = Dict
   objleftright = vectorCut
   objzero = Dict
@@ -70,10 +74,8 @@ instance ProdObj VectorR where
   objprod = Dict
   objfstsnd = vectorSplit
   objone = Dict
+-}
 
--- ... but this is missing the link with *^ for module.  We should be
--- able to add forall s. PreRing s => Module s (v s), but this creates
--- problems when defining instances.
 
 class VectorR v => InnerProdSpace v where
   inner :: Field s => v s -> v s -> s
@@ -96,7 +98,7 @@ instance Representable a => Representable (VNext a) where
 instance VectorR a => VectorR (VNext a) where
 
 data V f a where
-  V0 :: V Zero a
+  V0 :: V One a
   (:/) :: !(V f a) -> !a -> V (VNext f) a
 
 deriving instance Functor (V f)
@@ -108,7 +110,7 @@ deriving instance Eq a => Eq (V f a)
 class (Foldable f,Applicative f) => IsVec f where
   reifyVec :: f a -> V f a
 
-instance IsVec Zero where
+instance IsVec One where
   reifyVec FunctorZero = V0
 
 instance IsVec f => IsVec (VNext f) where
@@ -127,7 +129,7 @@ instance Applicative v => Applicative (VNext v) where
   VNext fs f <*> VNext xs x = VNext (fs <*> xs) (f x)
 
 
-type V1' = VNext Zero
+type V1' = VNext One
 type V2' = VNext V1'
 type V3' = VNext V2'
 
@@ -231,7 +233,7 @@ instance Ring s => Category (Mat s) where
 fromRel :: (VectorR a, VectorR b) => Rel s (Rep a) (Rep b) -> Mat s a b
 fromRel (Rel f) = Mat (tabulate (\i -> tabulate (\j -> f i j)))
   
-instance Ring s => Monoidal (⊗) One (Mat s) where
+instance Ring s => Monoidal (∘) Id (Mat s) where
   assoc = fromRel assoc
   assoc_ = fromRel assoc_
   unitorR = fromRel unitorR
@@ -239,10 +241,10 @@ instance Ring s => Monoidal (⊗) One (Mat s) where
   Mat f ⊗ Mat g = Mat (Comp (fmap (\x -> fmap Comp  (fmap (\y -> liftA2 (liftA2 (*)) (fmap pure x) (pure y)) g)) f))
 
 
-instance Ring s => Braided (⊗) One (Mat s) where
+instance Ring s => Braided (∘) Id (Mat s) where
   swap = fromRel swap
 
-instance Ring s => Monoidal (⊕) Zero (Mat s) where
+instance Ring s => Monoidal (⊗) One (Mat s) where
   assoc = fromRel assoc
   assoc_ = fromRel assoc_
   unitorR = fromRel unitorR
@@ -251,14 +253,14 @@ instance Ring s => Monoidal (⊕) Zero (Mat s) where
                         ((flip FunctorProd (pure zero)) <$> f)
                         (FunctorProd (pure zero) <$> g))
 
-instance Ring s => Cartesian (⊕) Zero (Mat s) where
+instance Ring s => Cartesian (⊗) One (Mat s) where
   Mat f ▵ Mat g = Mat (FunctorProd <$> f <*> g)
   dis = fromRel dis
 
-instance Ring s => Braided (⊕) Zero (Mat s) where
+instance Ring s => Braided (⊗) One (Mat s) where
   swap = fromRel swap
 
-instance Ring s => CoCartesian (⊕) Zero (Mat s) where
+instance Ring s => CoCartesian (⊗) One (Mat s) where
   inl = fromRel inl
   inr = fromRel inr
   new = fromRel new
@@ -354,12 +356,18 @@ instance (TestEqual s, Arbitrary s, Arbitrary1 a, Arbitrary1 b,Show (a (b s)), V
 
 
 prop_laws :: Property
-prop_laws = laws_category @(Mat Int) $ \tx ty -> Dict
-  \\ reprCon1Comp @Int showRing1Closed tx ty
-  \\ reprCon @Arbitrary1 tx
-  \\ reprCon @Arbitrary1 ty
-  \\ reprCon @VectorR tx
-  \\ reprCon @VectorR ty
+prop_laws = laws_category @(Mat Int)
+  (TestableCat
+     (\k -> forallType @(∘) @Id @(⊗) @One (\t
+       -> k t
+          \\ reprCon @VectorR t)
+          )
+     (\tx ty k -> forallMorphism tx ty k
+       \\ reprCon1Comp @Int showCompClosed tx ty
+       \\ reprCon @Arbitrary1 tx
+       \\ reprCon @Arbitrary1 ty
+       \\ reprCon @VectorR tx
+       \\ reprCon @VectorR ty))
 
 
 return []

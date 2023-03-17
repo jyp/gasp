@@ -20,16 +20,16 @@ instance Category NatTrans where
   NatTrans f . NatTrans g = NatTrans (f ∘ g)
   id = NatTrans id
 
-instance Monoidal (⊗) One NatTrans where
+instance Monoidal (∘) Id NatTrans where
   assoc_ = NatTrans (Comp . Comp . fmap fromComp . fromComp)
-  unitorR_ = NatTrans (fmap fromFunctorUnit . fromComp)
+  unitorR_ = NatTrans (fmap fromId . fromComp)
   NatTrans f ⊗ NatTrans g = NatTrans (Comp . f . fmap g . fromComp)
   assoc =  NatTrans (Comp . fmap Comp . fromComp . fromComp)
-  unitorR = NatTrans (Comp . fmap FunctorUnit)
-  unitorL = NatTrans (Comp . FunctorUnit)
-  unitorL_ = NatTrans (fromFunctorUnit . fromComp)
+  unitorR = NatTrans (Comp . fmap Id)
+  unitorL = NatTrans (Comp . Id)
+  unitorL_ = NatTrans (fromId . fromComp)
 
-instance Monoidal (⊕) Zero NatTrans where
+instance Monoidal (⊗) One NatTrans where
   assoc = NatTrans (\(FunctorProd (FunctorProd x y) z) -> FunctorProd x (FunctorProd y z))
   assoc_ = NatTrans (\(FunctorProd x (FunctorProd y z)) -> (FunctorProd (FunctorProd x y) z))
   unitorR = NatTrans (\x -> FunctorProd x FunctorZero)
@@ -38,5 +38,3 @@ instance Monoidal (⊕) Zero NatTrans where
   unitorL_ = NatTrans (\(FunctorProd _ x) -> x)
   NatTrans f ⊗ NatTrans g = NatTrans (\(FunctorProd x y) ->  FunctorProd (f x) (g y))
   
-
-

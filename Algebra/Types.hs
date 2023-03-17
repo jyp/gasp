@@ -37,11 +37,14 @@ class ProdKind k where
 class DualKind k where
   data Dual (a::k) :: k
 
-data Repr :: k -> Type where
-  RPlus :: Repr a -> Repr b -> Repr (a ⊕ b)
-  RTimes :: Repr a -> Repr b -> Repr (a ⊗ b)
-  ROne :: Repr One
-  RZero :: Repr Zero
+data Repr x i t o :: k -> Type where
+  RPlus :: Repr x i t o  a -> Repr x i t o b -> Repr x i t o (a `t` b)
+  RTimes :: Repr x i t o a -> Repr x i t o b -> Repr x i t o (a `x` b)
+  ROne :: Repr x i t o i
+  RZero :: Repr x i t o o
+
+type CRepr = Repr (∘) Id (⊗) One
+type MRepr = Repr (⊗) One (⊕) Zero
 
 instance SumKind Type where
   data x ⊕ y = Inj1 x | Inj2 y deriving (Eq,Ord,Show,Generic)
@@ -112,84 +115,85 @@ instance CoArbitrary Zero where
 instance (CoArbitrary f, CoArbitrary g) => CoArbitrary (f ⊕ g) where
 instance (CoArbitrary f, CoArbitrary g) => CoArbitrary (f ⊗ g) where
 
+newtype (f ∘ g) x = Comp {fromComp :: (f (g x))} deriving (Foldable, Generic1, Eq)
+deriving instance (Functor f, Functor g) => Functor (f ∘ g)
+deriving instance (Traversable f, Traversable g) => Traversable (f ∘ g)
+newtype Id x = Id {fromId :: x} deriving (Foldable, Traversable, Functor, Generic1, Eq)
 
--- | Algebraic structure for (Type -> Type) is in the exponential
--- level because functor composition is generally where the action is.
-instance SumKind (Type -> Type) where
-  data (f ⊕ g) x = FunctorProd {prodFst :: f x, prodSnd :: g x} deriving (Foldable, Traversable, Functor,Generic1,Eq)
-  data Zero x = FunctorZero deriving (Foldable, Traversable, Functor, Generic1, Eq)
+-- instance SumKind (Type -> Type) where
   
 instance ProdKind (Type -> Type) where
-  data (f ⊗ g) x = Comp {fromComp :: (f (g x))} deriving (Foldable, Traversable, Functor, Generic1, Eq)
-  data One x = FunctorUnit {fromFunctorUnit :: x} deriving (Foldable, Traversable, Functor, Generic1, Eq)
+  data (f ⊗ g) x = FunctorProd {prodFst :: f x, prodSnd :: g x} deriving (Foldable, Traversable, Functor,Generic1,Eq)
+  data One x = FunctorZero deriving (Foldable, Traversable, Functor, Generic1, Eq)
 
 instance DualKind (Type -> Type) where
   data Dual f x = FunctorDual {fromFunctorDual :: f x} deriving (Foldable, Traversable, Functor, Generic1, Show, Eq)
 
-deriving instance Show (Zero (x :: Type))
-deriving instance Show x => Show (One (x :: Type))
-deriving instance (Show (a x), Show (b x)) => Show ((a⊕b) (x :: Type))
-deriving instance (Show (a (b x))) => Show ((a⊗b) (x :: Type))
+deriving instance Show (One (x :: Type))
+deriving instance Show x => Show (Id (x :: Type))
+deriving instance (Show (a x), Show (b x)) => Show ((a⊗b) (x :: Type))
+deriving instance (Show (a (b x))) => Show ((a∘b) (x :: Type))
 
-data Ring1Closed con = Ring1Closed {
-  zero1Closed :: forall (x :: Type). Dict (con (Zero x)),
-  one1Closed :: forall (x :: Type). con x => Dict (con (One x)),
-  plus1Closed :: forall a b (x :: Type). (con (a x), con (b x)) => Dict (con ((a⊕b) x)),
-  times1Closed :: forall a b (x :: Type). (con (a (b x))) => Dict (con ((a⊗b) x))
+data CompClosed (con :: Type -> Constraint) = CompClosed {
+  zero1Closed :: forall (x :: Type). Dict (con (One x)),
+  plus1Closed :: forall a b (x :: Type). (con (a x), con (b x)) => Dict (con ((a⊗b) x)),
+  one1Closed :: forall (x :: Type). con x => Dict (con (Id x)),
+  times1Closed :: forall (a :: Type -> Type) b (x :: Type). (con (a (b x))) => Dict (con ((a∘b) x))
                           }
 
-showRing1Closed :: Ring1Closed Show
-showRing1Closed = Ring1Closed Dict Dict Dict Dict
 
-instance Distributive Zero where
-  distribute _ = FunctorZero
+showCompClosed :: CompClosed Show
+showCompClosed = CompClosed Dict Dict Dict Dict
+
 instance Distributive One where
-  distribute = FunctorUnit . fmap fromFunctorUnit
-instance Representable Zero where
-  type Rep Zero = Zero
+  distribute _ = FunctorZero
+instance Distributive Id where
+  distribute = Id . fmap fromId
+instance Representable One where
+  type Rep One = Zero
   index FunctorZero = \case
   tabulate _ = FunctorZero
-instance Representable One where
-  type Rep One = One
-  index (FunctorUnit x) _ = x
-  tabulate f = FunctorUnit (f Unit)
-instance (Distributive v, Distributive w) => Distributive (v ⊗ w) where
+instance Representable Id where
+  type Rep Id = One
+  index (Id x) _ = x
+  tabulate f = Id (f Unit)
+instance (Distributive v, Distributive w) => Distributive (v ∘ w) where
   distribute = Comp . fmap distribute . distribute . fmap fromComp
-instance (Representable v, Representable w) => Representable (v ⊗ w) where
-  type Rep (v ⊗ w) = Rep v ⊗ Rep w
+instance (Representable v, Representable w) => Representable (v ∘ w) where
+  type Rep (v ∘ w) = Rep v ⊗ Rep w
   index (Comp f) (i `Pair` j) = (f `index` i) `index` j
   tabulate f = Comp (tabulate (\i -> tabulate (\j -> f (i `Pair` j))))
-instance (Distributive v, Distributive w) => Distributive (v ⊕ w) where
+instance (Distributive v, Distributive w) => Distributive (v ⊗ w) where
   collect f x = FunctorProd (collect (prodFst . f) x) (collect (prodSnd . f) x)
-instance (Representable v, Representable w) => Representable (v ⊕ w) where
-  type Rep (v ⊕ w) = Rep v ⊕ Rep w
+instance (Representable v, Representable w) => Representable (v ⊗ w) where
+  type Rep (v ⊗ w) = Rep v ⊕ Rep w
   index (FunctorProd x y) = \case
     Inj1 i -> index x i
     Inj2 i -> index y i
   tabulate f = FunctorProd (tabulate (f . Inj1)) (tabulate (f . Inj2))
 
+instance Arbitrary1 Id where
+  liftArbitrary = fmap Id
 instance Arbitrary1 One where
-  liftArbitrary = fmap FunctorUnit
-instance Arbitrary1 Zero where
   liftArbitrary _ = pure FunctorZero
-instance (Arbitrary1 f, Arbitrary1 g) => Arbitrary1 (f ⊕ g) where
-  liftArbitrary g = FunctorProd <$> liftArbitrary g <*> liftArbitrary g
 instance (Arbitrary1 f, Arbitrary1 g) => Arbitrary1 (f ⊗ g) where
+  liftArbitrary g = FunctorProd <$> liftArbitrary g <*> liftArbitrary g
+instance (Arbitrary1 f, Arbitrary1 g) => Arbitrary1 (f ∘ g) where
   liftArbitrary g = Comp <$> liftArbitrary (liftArbitrary g)
 
-instance Applicative One where
-  pure = FunctorUnit
-  FunctorUnit f <*> FunctorUnit x = FunctorUnit (f x)
+instance Applicative Id where
+  pure = Id
+  Id f <*> Id x = Id (f x)
   
-instance Applicative Zero where
+instance Applicative One where
   pure _ = FunctorZero
   _ <*> _ = FunctorZero
 
-instance (Applicative f, Applicative g) => Applicative (f ⊗ g) where
+instance (Applicative f, Applicative g) => Applicative (f ∘ g) where
   Comp f <*> Comp x = Comp ((fmap (<*>) f) <*> x)
   pure x = Comp (pure (pure x))
 
-instance (Applicative f, Applicative g) => Applicative (f ⊕ g) where
+instance (Applicative f, Applicative g) => Applicative (f ⊗ g) where
   FunctorProd f g <*> FunctorProd x y = FunctorProd (f <*> x) (g <*> y)
   pure x = FunctorProd (pure x) (pure x)
 

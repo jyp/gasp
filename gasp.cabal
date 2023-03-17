@@ -41,6 +41,7 @@ library
        Algebra.Morphism.Pointwise
 
        Algebra.Category
+       Algebra.Category.Objects
        Algebra.Category.Relation
        Algebra.Category.Endo
        Algebra.Category.Op

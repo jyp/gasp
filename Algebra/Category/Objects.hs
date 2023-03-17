@@ -16,7 +16,7 @@ module Algebra.Category.Objects where
 
 import Algebra.Classes
 import Algebra.Types
-import Prelude (Int, Ord (..),otherwise,($))
+import Prelude (Int, Ord (..),otherwise,($),Show)
 import Data.Kind
 import Data.Constraint
 import Test.QuickCheck
@@ -34,22 +34,23 @@ type ZeroCon1 con = forall x. con x => con (Zero x) :: Constraint
 -- type LConTensor con = forall a b. con (a⊗b) => con a :: Constraint
 -- type RConTensor con = forall a b. con (a⊗b) => con a :: Constraint
 
-reprCon :: forall con x. (TimesCon con, PlusCon con, con One, con Zero) => Repr x -> Dict (con x)
+reprCon :: forall con a x i t o. (Con' x con, Con' t con, con i, con o) => Repr x i t o a -> Dict (con a)
 reprCon = \case
   RPlus a b -> Dict \\ reprCon @con a \\ reprCon @con b
   RTimes a b -> Dict \\ reprCon @con a \\ reprCon @con b
   RZero -> Dict
   ROne -> Dict
 
-reprCon1Comp :: forall (z :: Type) con (a :: Type -> Type) b. Ring1Closed con -> con z => Repr a -> Repr b -> Dict (con (a (b z)))
-reprCon1Comp c@Ring1Closed{..} a b = Dict \\ reprCon1 @(b z) c a \\ reprCon1 @z c b
+reprCon1Comp :: forall (z :: Type) con (a :: Type -> Type) b. CompClosed con -> con z => CRepr a -> CRepr b -> Dict (con (a (b z)))
+reprCon1Comp c@CompClosed{..} a b = Dict \\ reprCon1 @(b z) c a \\ reprCon1 @z c b
 
-reprCon1 :: forall (z :: Type) (con :: Type -> Constraint) a. con z => Ring1Closed con -> Repr a -> Dict (con (a z))
-reprCon1 c@Ring1Closed{..} = \case
+reprCon1 :: forall (z :: Type) (con :: Type -> Constraint) a. con z => CompClosed con -> CRepr a -> Dict (con (a z))
+reprCon1 c@CompClosed{..} = \case
   RPlus a b -> plus1Closed \\ reprCon1 @z c a \\ reprCon1 @z c b
   RTimes a b -> times1Closed \\ reprCon1Comp @z c a b
   RZero -> zero1Closed
   ROne -> one1Closed
+{-
 
 
 type ProdObj :: forall {k}. (k -> Constraint) -> Constraint
@@ -72,10 +73,6 @@ objSumProxy _ _  = objsum
 objProdProxy :: (ProdObj con, con a, con b) => proxy1 a -> proxy2 b -> Dict (con (a⊗b))
 objProdProxy _ _  = objprod
 
-type Trivial :: k -> Constraint
-class Trivial x
-instance Trivial x
-
 instance ProdObj Trivial where
   objprod = Dict
   objfstsnd = Dict
@@ -96,11 +93,18 @@ instance SumObj Finite where
   objleftright = finiteLeftRight
   objzero = Dict
 
+-}
+
+type Trivial :: k -> Constraint
+class Trivial x
+instance Trivial x
+
+
 
 data Some1  f where
   Some1 :: f x -> Some1 f
 
-sizedArbRepr :: Int -> Gen (Some1 Repr)
+sizedArbRepr :: Int -> Gen (Some1 (Repr x i t o))
 sizedArbRepr n
   | n <= 1 = frequency [(1,pure(Some1 RZero)), (3,pure(Some1 ROne))]
   | otherwise = do
@@ -109,20 +113,25 @@ sizedArbRepr n
       elements [Some1 (RPlus l r),Some1 (RTimes l r)]
 
 
-isArbitrary1 :: Repr x -> Dict (Arbitrary1 x)
+isArbitrary1 :: CRepr x -> Dict (Arbitrary1 x)
 isArbitrary1 = reprCon
 
-isCoArbitrary :: Repr x -> Dict (CoArbitrary x)
+isCoArbitrary :: MRepr x -> Dict (CoArbitrary x)
 isCoArbitrary = reprCon
 
-instance Arbitrary (Some1 Repr) where
+instance Arbitrary (Some1 (Repr x i t o)) where
   arbitrary = sized sizedArbRepr
 
-forallType :: (forall (x :: k). Repr x -> Property) -> Property
+forallType :: forall {k} x i t o. (forall (a :: k). Repr x i t o a -> Property) -> Property
 forallType gen = MkProperty $ do
-  Some1 t <- (arbitrary :: Gen (Some1 Repr))
+  Some1 t <- (arbitrary :: Gen (Some1 (Repr x i t o)))
   unProperty (property (gen t))
 
-arbitrary2' :: forall f x y. Arbitrary (f x y) => Repr x -> Repr y -> Gen (f x y)
+
+arbitrary2' :: forall f a b proxy. Arbitrary (f a b) => proxy a -> proxy b -> Gen (f a b)
 arbitrary2' _ _ = arbitrary
+
+forallMorphism :: forall f a b x i t o. (Show (f a b), Arbitrary (f a b))
+               => Repr x i t o a -> Repr x i t o b -> (f a b -> Property) -> Property
+forallMorphism t1 t2 = forAll (arbitrary2' t1 t2)
 
