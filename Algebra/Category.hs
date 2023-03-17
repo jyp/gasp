@@ -56,13 +56,7 @@ class Category (cat :: k -> k -> Type) where
 law_id_comp :: forall {k} (f :: k -> k -> Type) a b. (Category f, TestEqual (f a b), O2 f a b) => f a b -> Property
 law_id_comp n = nameLaw "id/comp" (id . n =.= n)
 
-forallObj ::  forall {k} (f :: k -> k -> Type) {con} x i t o.
-  (Obj f ~ con, con i, con o, Con' x con, Con' t con)
-  => (forall (a :: k). con a => Repr x i t o a -> Property) -> Property
-forallObj k = forallType @x @i @t @o (\t -> k t \\ reprCon @con t)
-
-forallMorphism' :: 
-               TestableCat f -> (forall a b. (O2 f a b, TT f a b) => f a b -> Property) -> Property
+forallMorphism' :: TestableCat f -> (forall a b. (O2 f a b, TT f a b) => f a b -> Property) -> Property
 forallMorphism' (TestableCat genObj genMorph) p
   = genObj (\t1 -> 
     genObj (\t2 ->
@@ -75,7 +69,7 @@ law_comp_id n = nameLaw "comp/id" (n . id =.= n)
 law_comp_assoc :: forall {k} (f :: k -> k -> Type) a b c d. (Category f, TestEqual (f a d), O4 f a b c d) => f c d -> f b c -> f a b -> Property
 law_comp_assoc n m o = nameLaw "comp/assoc" (n . (m . o) =.= (n . m) . o)
 
-law_comp_assoc' :: forall {k} (f :: k -> k -> Type) o.
+law_comp_assoc' :: forall {k} (f :: k -> k -> Type).
   (-- forall x y. (con x, con y) => TestEqual (f x y),
    -- forall α β. (con α, con β) => Arbitrary (f α β),
    -- forall α β. (con α, con β) => Show (f α β),
@@ -102,11 +96,7 @@ type GenObj o f = ((forall a. Obj f a => o a -> Property) -> Property)
 data TestableCat f = forall o. TestableCat (GenObj o f) (GenMorph o f)
 
 
-laws_category :: forall {k} (f :: k -> k -> Type) {con}.
-                 (
-                 -- forall x y. (con x, con y) => TestEqual (f x y),
-                    Category f)
-              =>   TestableCat f -> Property
+laws_category :: forall f. (Category f) => TestableCat f -> Property
 laws_category tc = product [forallMorphism' @f tc (\f -> property (law_id_comp f))
                            ,forallMorphism' @f tc (\f -> property (law_comp_id f))
                            ,law_comp_assoc' tc]
@@ -119,7 +109,7 @@ class Category cat => Dagger cat where
 (∘) = (.) 
 
 
-class ({-ProdObj (Obj cat), -}Category cat) => Monoidal (x :: k -> k -> k) i (cat :: k -> k -> Type) | x -> i, i -> x where
+class ({-ProdObj (Obj cat), -}Category cat) => Monoidal x i (cat :: k -> k -> Type) | x -> i, i -> x where
   (⊗)      :: (Obj cat a, Obj cat b, Obj cat c, Obj cat d) => (a `cat` b) -> (c `cat` d) -> (a `x` c) `cat` (b `x` d)
   assoc    :: (Obj cat a, Obj cat b, Obj cat c) => ((a `x` b) `x` c) `cat` (a `x` (b `x` c))
   assoc_   :: (Obj cat a, Obj cat b, Obj cat c) => (a `x` (b `x` c)) `cat` ((a `x` b) `x` c)
@@ -180,8 +170,6 @@ class Monoidal x i cat => CoCartesian x i cat where
 
 
 
-
-
 ---------------------------
 -- Instances
 ----------------------------
@@ -214,7 +202,8 @@ instance Monoidal (⊕) Zero (->) where
     (Inj1 x) -> (Inj1 (Inj1 x)) 
     (Inj2 (Inj1 x)) -> (Inj1 (Inj2 x)) 
     (Inj2 (Inj2 x)) -> (Inj2 x) 
-  unitorR x = Inj1 x
+  unitorR = Inj1
+  unitorL = Inj2
   unitorR_ = \case
     Inj1 x -> x
     Inj2 x -> case x of
