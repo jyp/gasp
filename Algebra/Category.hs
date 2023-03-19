@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
@@ -28,7 +29,7 @@ import Data.Kind
 import Data.Constraint
 import Test.QuickCheck
 import Prelude (Show(..))
-
+import qualified Algebra.CategoryRecords as R
 
 type O2 k a b = (Obj k a, Obj k b)
 type O3 k a b c =
@@ -53,53 +54,7 @@ class Category (cat :: k -> k -> Type) where
   id :: Obj cat a => a `cat` a
 
 
-law_id_comp :: forall {k} (f :: k -> k -> Type) a b. (Category f, TestEqual (f a b), O2 f a b) => f a b -> Property
-law_id_comp n = nameLaw "id/comp" (id . n =.= n)
-
-forallMorphism' :: TestableCat f -> (forall a b. (O2 f a b, TT f a b) => f a b -> Property) -> Property
-forallMorphism' (TestableCat genObj genMorph) p
-  = genObj (\t1 -> 
-    genObj (\t2 ->
-    genMorph t1 t2 (\f -> p f)))
-
-
-law_comp_id :: forall {k} (f :: k -> k -> Type) a b. (Category f, TestEqual (f a b), O2 f a b) => f a b -> Property
-law_comp_id n = nameLaw "comp/id" (n . id =.= n)
-
-law_comp_assoc :: forall {k} (f :: k -> k -> Type) a b c d. (Category f, TestEqual (f a d), O4 f a b c d) => f c d -> f b c -> f a b -> Property
-law_comp_assoc n m o = nameLaw "comp/assoc" (n . (m . o) =.= (n . m) . o)
-
-law_comp_assoc' :: forall {k} (f :: k -> k -> Type).
-  (-- forall x y. (con x, con y) => TestEqual (f x y),
-   -- forall α β. (con α, con β) => Arbitrary (f α β),
-   -- forall α β. (con α, con β) => Show (f α β),
-   Category f)
-  => TestableCat f -> Property
-law_comp_assoc' (TestableCat genObj genMorph)
-  = genObj (\t1 ->
-    genObj (\t2 ->
-    genObj (\t3 ->
-    genObj (\t4 ->
-    genMorph t1 t2 (\ h ->
-    genMorph t2 t3 (\ g ->
-    genMorph t3 t4 (\ f ->
-    genMorph t1 t4 (\ _ ->
-    (f . (g . h) =.= (f . g) . h)))))))))
-
-(//) :: Dict c -> (c => k) -> k
-Dict // k = k
-
-type TT f x y = (Arbitrary (f x y), Show (f x y), TestEqual (f x y))
-type GenMorph o f = forall a b. o a -> o b -> (TT f a b => f a b -> Property) -> Property
-type GenObj o f = ((forall a. Obj f a => o a -> Property) -> Property)
-
-data TestableCat f = forall o. TestableCat (GenObj o f) (GenMorph o f)
-
-
-laws_category :: forall f. (Category f) => TestableCat f -> Property
-laws_category tc = product [forallMorphism' @f tc (\f -> property (law_id_comp f))
-                           ,forallMorphism' @f tc (\f -> property (law_comp_id f))
-                           ,law_comp_assoc' tc]
+-- , (∘) = (∘), id = id
 
 
 class Category cat => Dagger cat where
@@ -108,6 +63,7 @@ class Category cat => Dagger cat where
 (∘) :: forall {k} (cat :: k -> k -> Type) a b c con. (Category cat, con ~ Obj cat, con a, con b, con c) => cat b c -> cat a b -> cat a c
 (∘) = (.) 
 
+type Monoidal :: forall {k}. (k -> k -> k) -> k -> (k -> k -> Type) -> Constraint
 
 class ({-ProdObj (Obj cat), -}Category cat) => Monoidal x i (cat :: k -> k -> Type) | x -> i, i -> x where
   (⊗)      :: (Obj cat a, Obj cat b, Obj cat c, Obj cat d) => (a `cat` b) -> (c `cat` d) -> (a `x` c) `cat` (b `x` d)
@@ -115,17 +71,32 @@ class ({-ProdObj (Obj cat), -}Category cat) => Monoidal x i (cat :: k -> k -> Ty
   assoc_   :: (Obj cat a, Obj cat b, Obj cat c) => (a `x` (b `x` c)) `cat` ((a `x` b) `x` c)
   unitorR   :: (Obj cat a) => a `cat` (a `x` i)
   unitorR_  :: (Obj cat a) => (a `x` i) `cat` a
-  unitorL   :: (Obj cat a, Obj cat i) => a `cat` (i `x` a)
+  unitorL   :: forall a. (Obj cat a, Obj cat i) => a `cat` (i `x` a)
   unitorL_  :: (Obj cat a, Obj cat i) => (i `x` a) `cat` a
 
-  default unitorL :: forall a con. (con ~ Obj cat, con i, Con' x con, Braided x i cat, Obj cat a) => a `cat` (i `x` a)
+  default unitorL :: forall a con. (con ~ Obj cat, con i, Con' x con, Symmetric x i cat, Obj cat a) => a `cat` (i `x` a)
   unitorL = swap ∘ unitorR
-  default unitorL_ :: forall a con. (con ~ Obj cat, Braided x i cat, con i, Con' x con, Obj cat a) => (i `x` a) `cat` a 
+  default unitorL_ :: forall a con. (con ~ Obj cat, Symmetric x i cat, con i, Con' x con, Obj cat a) => (i `x` a) `cat` a 
   unitorL_ = unitorR_ ∘ swap
+
+monoidalRec :: forall x cat i. Monoidal x i cat => R.MonoidalRec x i (Obj cat) cat
+monoidalRec = R.MonoidalRec { (⊗) = (⊗), assoc = assoc, assoc_ = assoc_,   unitorR = unitorR, unitorL = unitorL, unitorL_ = unitorL_, unitorR_ = unitorR_}
+
+
+
 class Monoidal x i cat => Braided x i cat where
   swap     :: (Obj cat a, Obj cat b) => (a `x` b) `cat` (b `x` a)
+  swap_     :: (Obj cat a, Obj cat b) => (a `x` b) `cat` (b `x` a)
+  default swap_ :: (Symmetric x i cat, Obj cat a, Obj cat b) => (a `x` b) `cat` (b `x` a)
+  swap_ = swap
+
+braidedRec :: forall x cat i. Braided x i cat => R.BraidedRec x i (Obj cat) cat
+braidedRec = R.BraidedRec { swap = swap, swap_ = swap_}
+
 
 class Braided x i cat => Symmetric x i cat
+
+
 
 class Symmetric x i cat => Cartesian x i cat where
   {-# MINIMAL exl,exr,dup | exl,exr,(▵) | dis,dup | dis,(▵) #-}
@@ -144,6 +115,7 @@ class Symmetric x i cat => Cartesian x i cat where
   exr = unitorL_ ∘ (dis ⊗ id)
   default (▵)   ::   forall a b c con. (con ~ Obj cat, con i, Con' x con, Obj cat a,Obj cat b, Obj cat c) =>    (a `cat` b) -> (a `cat` c) -> a `cat` (b `x` c)
   f ▵ g = (f ⊗ g) ∘ dup 
+
 
 cartesianCross :: (Obj k (b1 `x` b2), Obj k b3, Obj k c, Obj k b1, Obj k b2, Cartesian x i k) => k b1 b3 -> k b2 c -> k (b1 `x` b2) (b3 `x` c)
 cartesianCross a b = (a . exl) ▵ (b . exr)
@@ -179,6 +151,11 @@ class Symmetric x i cat => CoCartesian x i cat where
   default (▿)   ::   forall a b c con. (con ~ Obj cat, con i, Con' x con, Obj cat a,Obj cat b, Obj cat c) =>    (b `cat` a) -> (c `cat` a) -> (b `x` c) `cat` a
   f ▿ g = jam ∘ (f ⊗ g) 
 
+class Monoidal x i cat => Autonomous l r x i cat | x -> l, x -> r where
+  turn   :: i `cat` (l a ⊗ a)
+  turn'  :: (a ⊗ r a) `cat` i
+  
+class (Symmetric x i cat, Autonomous d d x i cat) => CompactClosed x d i cat where
 
 
 ---------------------------
