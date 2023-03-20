@@ -116,6 +116,8 @@ class Symmetric x i cat => Cartesian x i cat where
   default (▵)   ::   forall a b c con. (con ~ Obj cat, con i, Con' x con, Obj cat a,Obj cat b, Obj cat c) =>    (a `cat` b) -> (a `cat` c) -> a `cat` (b `x` c)
   f ▵ g = (f ⊗ g) ∘ dup 
 
+cartesianRec :: forall x cat i. Cartesian x i cat => R.CartesianRec x i (Obj cat) cat
+cartesianRec = R.CartesianRec {exl = exl , exr = exr , dis = dis , dup = dup , (▵) = (▵)}
 
 cartesianCross :: (Obj k (b1 `x` b2), Obj k b3, Obj k c, Obj k b1, Obj k b2, Cartesian x i k) => k b1 b3 -> k b2 c -> k (b1 `x` b2) (b3 `x` c)
 cartesianCross a b = (a . exl) ▵ (b . exr)
@@ -151,12 +153,15 @@ class Symmetric x i cat => CoCartesian x i cat where
   default (▿)   ::   forall a b c con. (con ~ Obj cat, con i, Con' x con, Obj cat a,Obj cat b, Obj cat c) =>    (b `cat` a) -> (c `cat` a) -> (b `x` c) `cat` a
   f ▿ g = jam ∘ (f ⊗ g) 
 
+type BiCartesian x i cat = (Cartesian x i cat, CoCartesian x i cat)
+
 class Monoidal x i cat => Autonomous l r x i cat | x -> l, x -> r where
   turn   :: i `cat` (l a ⊗ a)
   turn'  :: (a ⊗ r a) `cat` i
   
-class (Symmetric x i cat, Autonomous d d x i cat) => CompactClosed x d i cat where
+class (Symmetric x i cat, Autonomous d d x i cat) => Compact x d i cat where
 
+  
 
 ---------------------------
 -- Instances

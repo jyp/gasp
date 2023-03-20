@@ -27,6 +27,7 @@
 module Algebra.Linear where
 
 import Algebra.Classes
+import Algebra.Category.Laws (laws_bicartesian,testableCat)
 import Prelude (Show(..),Eq(..),($),Ord,error,flip,IO,Bool,Int)
 import Control.Applicative
 import Data.Foldable hiding (sum,product)
@@ -241,6 +242,7 @@ instance Ring s => Monoidal (∘) Id (Mat s) where
   Mat f ⊗ Mat g = Mat (Comp (fmap (\x -> fmap Comp  (fmap (\y -> liftA2 (liftA2 (*)) (fmap pure x) (pure y)) g)) f))
 
 
+instance Ring s => Symmetric (∘) Id (Mat s) where
 instance Ring s => Braided (∘) Id (Mat s) where
   swap = fromRel swap
 
@@ -259,6 +261,7 @@ instance Ring s => Cartesian (⊗) One (Mat s) where
 
 instance Ring s => Braided (⊗) One (Mat s) where
   swap = fromRel swap
+instance Ring s => Symmetric (⊗) One (Mat s) where
 
 instance Ring s => CoCartesian (⊗) One (Mat s) where
   inl = fromRel inl
@@ -356,8 +359,8 @@ instance (TestEqual s, Arbitrary s, Arbitrary1 a, Arbitrary1 b,Show (a (b s)), V
 
 
 prop_laws :: Property
-prop_laws = laws_category @(Mat Int)
-  (TestableCat
+prop_laws = laws_bicartesian @(Mat Int)
+  (testableCat
      (\k -> forallType @(∘) @Id @(⊗) @One (\t
        -> k t
           \\ reprCon @VectorR t)
@@ -367,7 +370,16 @@ prop_laws = laws_category @(Mat Int)
        \\ reprCon @Arbitrary1 tx
        \\ reprCon @Arbitrary1 ty
        \\ reprCon @VectorR tx
-       \\ reprCon @VectorR ty))
+       \\ reprCon @VectorR ty)
+     (\a b -> Dict
+       \\ reprCon1Comp @Int showCompClosed a b
+       \\ reprCon @Arbitrary1 a
+       \\ reprCon @Arbitrary1 b
+       \\ reprCon @VectorR a
+       \\ reprCon @VectorR b)
+     RPlus
+     RZero
+  )
 
 
 return []

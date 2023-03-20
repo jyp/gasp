@@ -52,3 +52,4 @@ instance Braided x i k => Braided x i (Op k) where
 
 instance Symmetric x i k => Symmetric x i (Op k) where
 
+
