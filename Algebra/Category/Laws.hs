@@ -138,9 +138,9 @@ laws_monoidal  t@TestableCat{..}   = product
      \\ getTestable' ((a × b) × c)
    , genObj $ \a -> genObj $ \b -> genObj $ \c -> law_assoc_inv mOp a b c
      \\ getTestable' ((a × b) × c)
-   -- , genObj $ \a -> law_unitorR_inv @cat @x a \\ getTestable' (a × unitObj) -- TODO: block 
+   , genObj $ \a -> law_unitorR_inv @cat @x a \\ getTestable' (a × unitObj) 
    , genObj $ \a -> law_unitorR_inv @(Op cat) @x a  \\ getTestable' (a × unitObj)
-   -- , genObj $ \a -> law_unitorL_inv m   a  \\ getTestable' (unitObj × a)
+   , genObj $ \a -> law_unitorL_inv m   a  \\ getTestable' (unitObj × a)
    , genObj $ \a -> law_unitorL_inv mOp a  \\ getTestable' (unitObj × a)
    , genObj $ \a -> genObj $ \b -> law_monoidal_triangle @cat @x a b
      \\ getTestable (a × b) (a × (unitObj × b))

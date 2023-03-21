@@ -31,17 +31,17 @@ data M s a b where
   Diag :: s -> M s a a
   (:▵)  :: M s a b -> M s a c ->  M s a (b ⊕ c)
   (:▿)  :: M s b a -> M s c a ->  M s (b ⊕ c) a
+  EmptyL :: M s Zero a -- no elements
+  EmptyR :: M s a Zero -- no elements
+  -- EmptyR and EmptyL are there to make the law unitorR . unitorR_ pass
 deriving instance Show s => Show (M s a b)
 
-
-instance DecidableZero s => DecidableZero (M s a b) where
-  isZero = \case
-     Zero -> True
-     Diag s -> isZero s
-     a :▵ b -> isZero a * isZero b
-     a :▿ b -> isZero a * isZero b
     
 instance (Show s, Additive s, TestEqual s) => TestEqual (M s a b) where
+  EmptyR =.= _ = property True
+  EmptyL =.= _ = property True
+  _ =.= EmptyR = property True
+  _ =.= EmptyL = property True
   (a :▵ b) =.= c = case findSplit c of
     (a',b') -> (a =.= a') * (b =.= b')
   (a :▿ b) =.= c = case findSplit' c of
@@ -56,6 +56,8 @@ instance (Show s, Additive s, TestEqual s) => TestEqual (M s a b) where
 
 testZero :: (Additive s, TestEqual s) => M s a b -> Property
 testZero = \case
+     EmptyL -> property True
+     EmptyR -> property True
      Zero -> property True
      Diag s -> s =.= zero
      a :▵ b -> testZero a * testZero b
@@ -63,12 +65,17 @@ testZero = \case
 
 instance Ring s => Scalable s (M s a b) where
   s *^ c = case c of
+    EmptyR -> EmptyR
+    EmptyL -> EmptyL
     Zero -> Zero
     Diag x -> Diag (s*x)
     a :▿ b -> scale s a :▿ scale s b
     a :▵ b -> scale s a :▵ scale s b
   
 instance Ring s => Category (M s) where
+  EmptyR . _ = EmptyR
+  _ . EmptyL = EmptyL
+  EmptyL . EmptyR = Zero -- TODO ?
   Zero . _ = Zero
   _ . Zero = Zero
   Diag s . m = s *^ m
@@ -85,33 +92,30 @@ instance Ring s => Monoidal (⊕) Zero (M s) where
   assoc = cartesianAssoc
   assoc_ = cartesianAssoc_
   unitorR = cartesianUnitor
-  unitorR_ = cartesianUnitor_
-
--- TODO: this test fails.
--- tt  = unitorR :: M Int One (One ⊕ Zero)
--- tt' = unitorR_ :: M Int (One ⊕ Zero) One
-
--- -- >>> tt . tt'
--- -- (:▵) ((:▿) (Diag 1) Zero) Zero
+  unitorR_ = id ▿ new
 
 instance Ring s => Symmetric (⊕) Zero (M s)
 instance Ring s => Braided (⊕) Zero (M s) where
   swap = (zero ▵ id) ▿ (id ▵ zero)
 instance Ring s => Cartesian (⊕) Zero (M s) where
   (▵) = (:▵)
-  dis = Zero
+  dis = EmptyR
   exl = id ▿ Zero
   exr = Zero ▿ id
 
 instance Ring s => CoCartesian (⊕) Zero (M s) where
   (▿) = (:▿)
-  new = Zero
+  new = EmptyL
   inl = id ▵ Zero
   inr = Zero ▵ id
 
 instance Additive s => Additive (M s a b) where
   zero = Zero
   Zero + a = a
+  EmptyL + _ = EmptyL
+  EmptyR + _ = EmptyR
+  _ + EmptyL = EmptyL
+  _ + EmptyR = EmptyR
   a + Zero = a
   Diag s + Diag t = Diag (s + t)
   (a :▵ b) + m  = (a + d) :▵ (b + c) where (d,c) = findSplit  m
@@ -121,18 +125,22 @@ instance Additive s => Additive (M s a b) where
 
 instance Group s => Group (M s a b) where
   negate = \case
+    EmptyL -> EmptyL
+    EmptyR -> EmptyR
     Zero -> Zero
     Diag d -> Diag (negate d)
     f :▵ g -> negate f :▵ negate g
     f :▿ g -> negate f :▿ negate g
 
 findSplit :: M s a (b ⊕ c) -> (M s a b, M s a c)
+findSplit EmptyL = (EmptyL, EmptyL)
 findSplit Zero = (Zero,Zero)
 findSplit (Diag s) = (Diag s:▿Zero,Zero :▿ Diag s)
 findSplit (a :▵ b) = (a,b)
 findSplit ((findSplit -> (a1,a2)) :▿ (findSplit -> (b1,b2))) = (a1:▿b1,a2:▿b2)
 
 findSplit' :: M s (b ⊕ c) a -> (M s b a, M s c a)
+findSplit' EmptyR = (EmptyR, EmptyR)
 findSplit' Zero = (Zero,Zero)
 findSplit' (Diag s) = (Diag s:▵Zero,Zero :▵ Diag s)
 findSplit' (a :▿ b) = (a,b)
@@ -141,14 +149,16 @@ findSplit' ((findSplit' -> (a1,a2)) :▵ (findSplit' -> (b1,b2))) = (a1:▵b1,a2
 
 transpose :: M s a b -> M s b a
 transpose = \case
+  EmptyL -> EmptyR
+  EmptyR -> EmptyL
   Zero -> Zero
   (Diag s) -> Diag s
   (a :▿ b) -> transpose a :▵ transpose b
   (a :▵ b) -> transpose a :▿ transpose b
 
 genMorphism :: Arbitrary s => Ring s => Repr (⊗) One (⊕) Zero a -> Repr (⊗) One (⊕) Zero b -> Gen (M s a b)
-genMorphism RZero _ = pure Zero
-genMorphism _ RZero = pure Zero
+genMorphism RZero _ = pure EmptyL
+genMorphism _ RZero = pure EmptyR
 genMorphism (RPlus x y) b = transpose <$> ((▵) <$> (genMorphism b x) <*> (genMorphism b y))
 genMorphism ROne (RPlus x y) = (▵) <$> genMorphism ROne x <*> genMorphism ROne y
 genMorphism ROne ROne = Diag <$> arbitrary
