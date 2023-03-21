@@ -358,19 +358,16 @@ instance (TestEqual s, Arbitrary s, Arbitrary1 a, Arbitrary1 b,Show (a (b s)), V
 
 
 
-prop_laws :: Property
-prop_laws = laws_bicartesian @(Mat Int)
+prop_linear_with_functor_laws :: Property
+prop_linear_with_functor_laws =
+  laws_bicartesian @(Mat Int)
   (testableCat
-     (\k -> forallType @(∘) @Id @(⊗) @One (\t
-       -> k t
-          \\ reprCon @VectorR t)
-          )
+     (\k -> forallType @(∘) @Id @(⊗) @One (\t -> k t
+       \\ reprCon @VectorR t))
      (\tx ty k -> forallMorphism tx ty k
        \\ reprCon1Comp @Int showCompClosed tx ty
        \\ reprCon @Arbitrary1 tx
-       \\ reprCon @Arbitrary1 ty
-       \\ reprCon @VectorR tx
-       \\ reprCon @VectorR ty)
+       \\ reprCon @Arbitrary1 ty)
      (\a b -> Dict
        \\ reprCon1Comp @Int showCompClosed a b
        \\ reprCon @Arbitrary1 a
@@ -378,8 +375,7 @@ prop_laws = laws_bicartesian @(Mat Int)
        \\ reprCon @VectorR a
        \\ reprCon @VectorR b)
      RPlus
-     RZero
-  )
+     RZero)
 
 
 return []

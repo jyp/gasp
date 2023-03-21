@@ -41,10 +41,15 @@ library
        Algebra.Morphism.Pointwise
 
        Algebra.Category
+       Algebra.Category.Laws
        Algebra.Category.Objects
+                  
        Algebra.Category.Relation
        Algebra.Category.Endo
        Algebra.Category.Op
        Algebra.Category.NatTrans
-
+       Algebra.Category.BlockMatrix
+                  
+       Algebra.CategoryRecords
+    
        Algebra.Linear

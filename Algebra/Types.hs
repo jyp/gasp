@@ -43,6 +43,13 @@ data Repr x i t o :: k -> Type where
   ROne :: Repr x i t o i
   RZero :: Repr x i t o o
 
+instance Show (Repr x i t o a) where
+  showsPrec d = \case
+    RZero -> showString "0"
+    ROne -> showString "1"
+    RPlus x y -> showParen (d>=2) (showsPrec 2 x . showString " + " . showsPrec 2 y)
+    RTimes x y -> showParen (d>=3) (showsPrec 3 x . showString " × " . showsPrec 3 y)
+
 type CRepr = Repr (∘) Id (⊗) One
 type MRepr = Repr (⊗) One (⊕) Zero
 

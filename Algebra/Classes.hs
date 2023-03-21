@@ -59,13 +59,13 @@ class Additive a where
   times :: Natural -> a -> a
   times = timesDefault
 
-class (Arbitrary a, Show a) => TestEqual a where
+class (Show a) => TestEqual a where
   (=.=) :: a -> a -> Property
 
 law_refl :: TestEqual a => a -> Property
 law_refl x = nameLaw "=.=-reflexive" (x =.= x)
 
-laws_testEqual :: forall a. TestEqual a => Property
+laws_testEqual :: forall a. Arbitrary a => TestEqual a => Property
 laws_testEqual = property (law_refl @a)
 
 infix 0 =.=
@@ -89,7 +89,7 @@ law_plus_assoc m n o = nameLaw "plus/assoc" (n + (m + o) =.= (n + m) + o)
 law_times :: (TestEqual a, Additive a) => Positive Integer -> a -> Property
 law_times (Positive m) n = nameLaw "times" (times m n =.= timesDefault m n)
 
-laws_additive :: forall a. (Additive a, TestEqual a) => Property
+laws_additive :: forall a. Arbitrary a => (Additive a, TestEqual a) => Property
 laws_additive = product [property (law_zero_plus @a)
                         ,property (law_plus_zero @a)
                         ,property (law_plus_assoc @a)
@@ -107,7 +107,7 @@ law_exp_pos n = nameLaw "positive exponent" $ do
   m <- choose (0,5) -- for dense polynomials, elevating to a large power can be very expensive.
   pure (n ^+ m =.= positiveExponentDefault n m)
 
-laws_multiplicative :: forall a. (Multiplicative a, TestEqual a) => Property
+laws_multiplicative :: forall a. Arbitrary a => (Multiplicative a, TestEqual a) => Property
 laws_multiplicative = product [property (law_one_mul @a)
                               ,property (law_mul_one @a)
                               ,property (law_mul_assoc @a)
@@ -116,7 +116,7 @@ laws_multiplicative = product [property (law_one_mul @a)
 law_fromInteger :: forall a. (TestEqual a, Ring a) => Integer -> Property
 law_fromInteger m = nameLaw "fromInteger" (fromInteger @a m =.= fromIntegerDefault m)
 
-laws_ring :: forall a. (Ring a, TestEqual a) => Property
+laws_ring :: forall a. Arbitrary a => (Ring a, TestEqual a) => Property
 laws_ring = product [property (law_fromInteger @a)
                     ,laws_additive @a
                     ,laws_module @a @a
@@ -223,7 +223,7 @@ class Additive a => AbelianAdditive a
 law_plus_comm :: (TestEqual a, Additive a) => a -> a -> Property
 law_plus_comm m n = nameLaw "plus/comm" (m + n =.= n + m)
 
-laws_abelian_additive :: forall a. (Group a, TestEqual a) => Property
+laws_abelian_additive :: forall a. Arbitrary a => (Group a, TestEqual a) => Property
 laws_abelian_additive = laws_additive @a .&&. product [property (law_plus_comm @a)]
 
 instance AbelianAdditive Integer
@@ -256,12 +256,12 @@ law_mult :: (TestEqual a, Group a) => Integer -> a -> Property
 law_mult m n = nameLaw "mult" (mult m n =.= multDefault m n)
 
 
-laws_group :: forall a. (Group a, TestEqual a) => Property
+laws_group :: forall a. Arbitrary a => (Group a, TestEqual a) => Property
 laws_group = laws_additive @a .&&. product [property (law_negate_minus @a)
                                            ,property (law_mult @a)]
 
-laws_abelian_group :: forall a. (Group a, TestEqual a) => Property
-laws_abelian_group = laws_group @a .&&. product [property (law_plus_comm @a)]
+laws_abelian_group :: forall a. Arbitrary a => (Group a, TestEqual a) => Property
+laws_abelian_group = laws_group @a * product [property (law_plus_comm @a)]
 
 instance Group Integer where
   (-) = (Prelude.-)
@@ -350,7 +350,7 @@ law_module_sum_left s t x = nameLaw "module/distr/right" ((s + t) *^ x =.= s*^x 
 law_module_mul :: forall s a. (Module s a, TestEqual a) => s -> s -> a -> Property
 law_module_mul s t x = nameLaw "module/mul/assoc" ((s * t) *^ x =.= s *^ t *^ x)
 
-laws_module :: forall s a. (Module s a, TestEqual a, Arbitrary s, Show s) => Property
+laws_module :: forall s a. Arbitrary a => (Module s a, TestEqual a, Arbitrary s, Show s) => Property
 laws_module = laws_additive @a .&&. product [property (law_module_zero @s @a)
                                             ,property (law_module_one @s @a)
                                             ,property (law_module_sum @s @a)

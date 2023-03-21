@@ -16,7 +16,7 @@ module Algebra.Category.Objects where
 
 import Algebra.Classes
 import Algebra.Types
-import Prelude (Int, Ord (..),otherwise,($),Show)
+import Prelude (Int, Ord (..),otherwise,($),Show, Semigroup(..),show)
 import Data.Kind
 import Data.Constraint
 import Test.QuickCheck
@@ -112,6 +112,14 @@ sizedArbRepr n
       Some1 r <- sizedArbRepr  (n `div` 2)
       elements [Some1 (RPlus l r),Some1 (RTimes l r)]
 
+sizedArbSum :: Int -> Gen (Some1 (Repr x i t o))
+sizedArbSum n
+  | n <= 1 = frequency [(1,pure(Some1 RZero)), (3,pure(Some1 ROne))]
+  | otherwise = do
+      Some1 l <- sizedArbSum  (n `div` 2)
+      Some1 r <- sizedArbSum  (n `div` 2)
+      elements [Some1 (RPlus l r)]
+
 
 isArbitrary1 :: CRepr x -> Dict (Arbitrary1 x)
 isArbitrary1 = reprCon
@@ -122,10 +130,16 @@ isCoArbitrary = reprCon
 instance Arbitrary (Some1 (Repr x i t o)) where
   arbitrary = sized sizedArbRepr
 
+forallSumType :: forall {k} x i t o. (forall (a :: k). Repr x i t o a -> Property) -> Property
+forallSumType gen = MkProperty $ do
+  Some1 t <- (sized sizedArbSum :: Gen (Some1 (Repr x i t o)))
+  unProperty (counterexample ("obj: " <> show t) (property (gen t)))
+
 forallType :: forall {k} x i t o. (forall (a :: k). Repr x i t o a -> Property) -> Property
 forallType gen = MkProperty $ do
   Some1 t <- (arbitrary :: Gen (Some1 (Repr x i t o)))
-  unProperty (property (gen t))
+  unProperty (counterexample ("obj: " <> show t) (property (gen t)))
+
 
 
 arbitrary2' :: forall f a b proxy. Arbitrary (f a b) => proxy a -> proxy b -> Gen (f a b)

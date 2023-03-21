@@ -22,6 +22,7 @@ instance Ring s => Category (Rel s) where
   Rel p . Rel q = Rel (\i j -> sum [p k j * q i k | k <- inhabitants])
   id = Rel (\_ _ -> one)
 
+instance Ring s => Symmetric (⊗) One (Rel s)
 instance Ring s => Braided (⊗) One (Rel s) where
   swap = Rel (\(i `Pair` j) (k `Pair` l) -> indicate (i == l && j == k))
 
@@ -57,6 +58,7 @@ instance Ring s => Monoidal (⊕) Zero (Rel s) where
   unitorR_ = dagger unitorR
   assoc_ = dagger assoc
 
+instance Ring s => Symmetric (⊕) Zero (Rel s)
 instance Ring s => Braided (⊕) Zero (Rel s) where
   swap = Rel $ \case
     (Inj1 i) -> \case

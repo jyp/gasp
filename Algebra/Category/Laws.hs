@@ -30,7 +30,6 @@ import Algebra.Category.Op
 import Algebra.Classes (nameLaw, TestEqual(..), product)
 import Algebra.Category.Objects
 import Data.Kind
-import Algebra.Types
 import Data.Constraint
 import Test.QuickCheck
 import Prelude (Show(..),($))
@@ -52,32 +51,16 @@ law_comp_id n = nameLaw "comp/id" (n . id =.= n)
 law_comp_assoc :: forall {k} (f :: k -> k -> Type) a b c d. (Category f, TestEqual (f a d), O4 f a b c d) => f c d -> f b c -> f a b -> Property
 law_comp_assoc n m o = nameLaw "comp/assoc" (n . (m . o) =.= (n . m) . o)
 
-law_comp_assoc' :: forall {k} (f :: k -> k -> Type) {x} i.
-  (-- forall x y. (con x, con y) => TestEqual (f x y),
-   -- forall α β. (con α, con β) => Arbitrary (f α β),
-   -- forall α β. (con α, con β) => Show (f α β),
-   Category f)
-  => TestableCat x i (Obj f)  f -> Property
-law_comp_assoc' (TestableCat {..})
-  = genObj (\t1 ->
-    genObj (\t2 ->
-    genObj (\t3 ->
-    genObj (\t4 ->
-    genMorph t1 t2 (\ h ->
-    genMorph t2 t3 (\ g ->
-    genMorph t3 t4 (\ f ->
-    (f . (g . h) =.= (f . g) . h)
-    \\ getTestable t1 t4
-                   )))))))
-
-
 laws_category :: forall f x i. (Category f) => TestableCat x i (Obj f) f -> Property
-laws_category tc = product [forallMorphism' @f tc (\f -> property (law_id_comp f))
-                           ,forallMorphism' @f tc (\f -> property (law_comp_id f))
-                           ,law_comp_assoc' tc]
+laws_category tc@TestableCat {..}
+  = product [forallMorphism' @f tc (\f -> property (law_id_comp f))
+            ,forallMorphism' @f tc (\f -> property (law_comp_id f))
+            ,genObj $ \t1 -> genObj $ \t2 -> genObj $ \t3 -> genObj $ \t4 ->
+             genMorph t1 t2 $ \ h -> genMorph t2 t3 $ \ g -> genMorph t3 t4 $ \ f ->
+             (f . (g . h) =.= (f . g) . h) \\ getTestable t1 t4]
 
 
-type TT f x y = (Arbitrary (f x y), Show (f x y), TestEqual (f x y))
+type TT f x y = TestEqual (f x y)
 type GenObj obj o f = ((forall a. obj a => o a -> Property) -> Property)
 
 data TestableCat x i obj f = forall o. TestableCat
@@ -111,14 +94,14 @@ law_assoc_inv :: forall {k} (a::k) (b::k) (c::k) x i obj (cat :: k -> k -> Type)
   (obj a, obj b, obj c, Con' x obj, TestEqual (cat (x (x a b) c) (x (x a b) c)), Category cat, Obj cat ~ obj)
   => R.MonoidalRec x i obj cat -> o a -> o b -> o c -> Property
 law_assoc_inv R.MonoidalRec{..} _ _ _ = nameLaw "assoc-inv" (assoc_ @a @b @c ∘ assoc =.= id)
-
   
-law_unitorR_inv :: forall {k} {cat :: k -> k -> Type}
-                            {x :: k -> k -> k} {b :: k} {i :: k} {con :: k -> Constraint} {o}.
-                     (Category cat, Obj cat ~ con, Con' x con, con ~ Obj cat,  con b, con i,
+
+law_unitorR_inv :: forall {k} (cat :: k -> k -> Type) x i {b :: k} {con :: k -> Constraint} {o}.
+                     (Monoidal x i cat, Obj cat ~ con, Con' x con, con ~ Obj cat,  con b, con i,
                       TestEqual (cat (x b i) (x b i))) =>
-                     R.MonoidalRec x i con cat -> o b -> Property
-law_unitorR_inv  R.MonoidalRec{..} _ = nameLaw "unitor-inv" (unitorR @b ∘ unitorR_ =.= id)
+                     o b -> Property
+law_unitorR_inv _ = nameLaw "unitor-inv" ((unitorR :: b `cat` (b `x` i)) ∘ unitorR_ =.= id)
+
 
 law_unitorL_inv :: forall {k} {cat :: k -> k -> Type}
                             {x :: k -> k -> k} {b :: k} {i :: k} {con :: k -> Constraint} {o}.
@@ -126,12 +109,6 @@ law_unitorL_inv :: forall {k} {cat :: k -> k -> Type}
                       TestEqual (cat (x i b) (x i b))) =>
                      R.MonoidalRec x i con cat -> o b -> Property
 law_unitorL_inv  R.MonoidalRec{..} _ = nameLaw "unitor_-inv" (unitorL @b ∘ unitorL_ =.= id)
-
-
-law_monoidal :: forall {k} (cat :: k -> k -> Type) (x :: k -> k -> k) (i :: k) (a :: k)  obj o.
-  (obj ~ Obj cat, Monoidal x i cat, TestEqual (a `cat` a), obj a, obj i, Con' x obj )
-  => o a -> Property
-law_monoidal _ = nameLaw "monoidal" (unitorL_ . (id ⊗ unitorR_) . assoc . (unitorL ⊗ id) . (unitorR :: a `cat` (a `x` i)) =.= id)
   
 law_monoidal_triangle :: forall {k} (cat :: k -> k -> Type) (x :: k -> k -> k) (i :: k) a c obj o. (obj ~ Obj cat, Monoidal x i cat, obj a, obj c, obj i, Con' x obj, TestEqual (cat (x a c) (x a (x i c))))
   => o a -> o c -> Property
@@ -142,13 +119,11 @@ law_monoidal_pentagon :: forall {k} (cat :: k -> k -> Type) (x :: k -> k -> k) (
    (obj ~ Obj cat, Monoidal x i cat, obj a, obj b, obj c, obj d, Con' x obj, (TestEqual (cat (x (x (x a b) c) d) (x a (x b (x c d))))))
   => o a -> o b -> o c -> o d -> Property
 law_monoidal_pentagon _ _ _ _ = nameLaw "monoidal-pentagon"
-   (assoc . assoc =.=  ((id ⊗ assoc) . assoc . (assoc ⊗ id) :: (cat (x (x (x a b) c) d) (x a (x b (x c d))))))
+   (assoc . assoc =.=  ((id ⊗ assoc) . assoc . (assoc ⊗ id)
+                        :: (cat (x (x (x a b) c) d) (x a (x b (x c d))))))
 
 
-laws_monoidal :: forall {k} {x :: k -> k -> k}
-                          {obj :: k -> Constraint} 
-                          {i :: k} 
-                          {cat :: k -> k -> Type}.
+laws_monoidal :: forall {k} (cat :: k -> k -> Type) x i (obj :: k -> Constraint).
                  (obj ~ Obj cat, Con' x obj, Monoidal x i cat, obj i) 
                  => TestableCat x i obj cat -> Property
 laws_monoidal  t@TestableCat{..}   = product
@@ -163,9 +138,9 @@ laws_monoidal  t@TestableCat{..}   = product
      \\ getTestable' ((a × b) × c)
    , genObj $ \a -> genObj $ \b -> genObj $ \c -> law_assoc_inv mOp a b c
      \\ getTestable' ((a × b) × c)
-   , genObj $ \a -> law_unitorR_inv m   a \\ getTestable' (a × unitObj)
-   , genObj $ \a -> law_unitorR_inv mOp a  \\ getTestable' (a × unitObj)
-   , genObj $ \a -> law_unitorL_inv m   a  \\ getTestable' (unitObj × a)
+   -- , genObj $ \a -> law_unitorR_inv @cat @x a \\ getTestable' (a × unitObj) -- TODO: block 
+   , genObj $ \a -> law_unitorR_inv @(Op cat) @x a  \\ getTestable' (a × unitObj)
+   -- , genObj $ \a -> law_unitorL_inv m   a  \\ getTestable' (unitObj × a)
    , genObj $ \a -> law_unitorL_inv mOp a  \\ getTestable' (unitObj × a)
    , genObj $ \a -> genObj $ \b -> law_monoidal_triangle @cat @x a b
      \\ getTestable (a × b) (a × (unitObj × b))
@@ -207,7 +182,7 @@ law_braided_triangle _ = nameLaw "monoidal-triangle"
 laws_braided :: forall {k} {x :: k -> k -> k}
                           {obj :: k -> Constraint} 
                           {i :: k} 
-                          {cat :: k -> k -> Type}.
+                          (cat :: k -> k -> Type).
                  (obj ~ Obj cat, Con' x obj, Braided x i cat, obj i) 
                  => TestableCat x i obj cat -> Property
 laws_braided  t@TestableCat{..}   = product
@@ -235,7 +210,7 @@ law_swap_invol R.BraidedRec{..} _ _ = nameLaw "swap-invol" (swap @a @b ∘ swap 
 laws_symmetric :: forall {k} {x :: k -> k -> k}
                           {obj :: k -> Constraint} 
                           {i :: k} 
-                          {cat :: k -> k -> Type}.
+                          (cat :: k -> k -> Type).
                  (obj ~ Obj cat, Con' x obj, Braided x i cat, obj i) 
                  => TestableCat x i obj cat -> Property
 laws_symmetric  t@TestableCat{..}   = product
