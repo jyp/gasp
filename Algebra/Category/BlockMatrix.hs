@@ -16,10 +16,10 @@ module Algebra.Category.BlockMatrix where
 
 import Algebra.Category
 import Algebra.Category.Laws
-import Algebra.Category.Objects (Trivial,forallType,forallMorphism,forallSumType)
+import Algebra.Category.Objects (Trivial,forallSumType)
 import Algebra.Types
 import Algebra.Classes
-import Prelude (Int,Eq(..),Bool(..),(&&),Show(..),($),Semigroup(..),error)
+import Prelude (Int,Bool(..),Show(..),($),Semigroup(..),error)
 import Test.QuickCheck hiding (scale)
 import Test.QuickCheck.Property
 import Data.Constraint
@@ -73,9 +73,9 @@ instance Ring s => Scalable s (M s a b) where
     a :▵ b -> scale s a :▵ scale s b
   
 instance Ring s => Category (M s) where
+  EmptyL . EmptyR = Zero -- adding zero elements together for each position in the matrix
   EmptyR . _ = EmptyR
   _ . EmptyL = EmptyL
-  EmptyL . EmptyR = Zero -- TODO ?
   Zero . _ = Zero
   _ . Zero = Zero
   Diag s . m = s *^ m
@@ -88,7 +88,7 @@ instance Ring s => Category (M s) where
   id = Diag one
 
 instance Ring s => Monoidal (⊕) Zero (M s) where
-  (⊗) = cartesianCross
+  (⊗) = cartesianCross -- a potential optimisation is that two diagonals will be a new diagonal. Represent diagonals as (sparse) vectors?
   assoc = cartesianAssoc
   assoc_ = cartesianAssoc_
   unitorR = cartesianUnitor
@@ -112,16 +112,16 @@ instance Ring s => CoCartesian (⊕) Zero (M s) where
 instance Additive s => Additive (M s a b) where
   zero = Zero
   Zero + a = a
-  EmptyL + _ = EmptyL
-  EmptyR + _ = EmptyR
-  _ + EmptyL = EmptyL
-  _ + EmptyR = EmptyR
   a + Zero = a
-  Diag s + Diag t = Diag (s + t)
+  EmptyL + _ = EmptyL
+  _ + EmptyL = EmptyL
+  EmptyR + _ = EmptyR
+  _ + EmptyR = EmptyR
   (a :▵ b) + m  = (a + d) :▵ (b + c) where (d,c) = findSplit  m
-  (a :▿ b) + m  = (a + d) :▿ (b + c) where (d,c) = findSplit' m
   m  + (a :▵ b) = (a + d) :▵ (b + c) where (d,c) = findSplit  m
+  (a :▿ b) + m  = (a + d) :▿ (b + c) where (d,c) = findSplit' m
   m  + (a :▿ b) = (a + d) :▿ (b + c) where (d,c) = findSplit' m
+  Diag s + Diag t = Diag (s + t)
 
 instance Group s => Group (M s a b) where
   negate = \case
