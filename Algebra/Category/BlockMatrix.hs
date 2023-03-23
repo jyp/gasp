@@ -24,7 +24,7 @@ import Test.QuickCheck hiding (scale)
 import Test.QuickCheck.Property
 import Data.Constraint
 import Control.Applicative
-import Data.Kind
+
 
 data M s a b where
   Zero :: M s a b
