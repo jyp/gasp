@@ -8,8 +8,8 @@ module Algebra.Category.Relation where
 import Algebra.Classes
 import Algebra.Types
 import Algebra.Category
+import Prelude (Bool(..), Eq(..),(&&),flip, ($),(||))
 
-import Prelude (Bool(..), Eq(..),(&&),flip, ($))
 newtype Rel s a b = Rel (a -> b -> s)
 
 indicate :: Ring s => Bool -> s
@@ -35,6 +35,14 @@ instance Ring s => Monoidal (⊗) One (Rel s) where
   Rel p ⊗ Rel q = Rel (\(i `Pair` j) (k `Pair` l) -> p i k * q j l)
   assoc = Rel (\((i `Pair` j) `Pair` k) (i' `Pair` (j' `Pair` k')) -> indicate (i == i' && j == j' && k == k'))
   assoc_ = dagger assoc
+
+instance Ring s => Cartesian (⊗) One (Rel s) where
+  dis = Rel (\_ _ -> zero)
+  dup = Rel (\i (j `Pair` k) -> indicate (i == j || i == k))
+
+instance Ring s => CoCartesian (⊗) One (Rel s) where
+  new = dagger dis
+  jam = dagger dup
 
 instance Ring s => Monoidal (⊕) Zero (Rel s) where
   Rel p ⊗ Rel q = Rel $ \case
