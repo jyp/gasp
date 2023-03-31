@@ -69,8 +69,8 @@ instance Ring s => Scalable s (M s a b) where
     EmptyL -> EmptyL
     Zero -> Zero
     Diag x -> Diag (s*x)
-    a :▿ b -> scale s a :▿ scale s b
-    a :▵ b -> scale s a :▵ scale s b
+    a :▿ b -> (s *^ a) :▿ (s *^ b)
+    a :▵ b -> (s *^ a) :▵ (s *^ b)
   
 instance Ring s => Category (M s) where
   EmptyL . EmptyR = Zero -- adding zero elements together for each position in the matrix
