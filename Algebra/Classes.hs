@@ -8,7 +8,7 @@ module Algebra.Classes where
 
 import Prelude (Int,Integer,Float,Double, (==), Monoid(..), Ord(..), Ordering(..), Foldable,
                 foldMap, (||), (&&), ($),
-                 Real(..), Enum(..), snd, Rational, Functor(..), Eq(..), Bool(..), Semigroup(..), Show(..), uncurry, otherwise)
+                 Real(..), Enum(..), snd, Rational, Functor(..), Eq(..), Bool(..), Semigroup(..), Show(..), uncurry, otherwise,String)
 
 import qualified Prelude
 import qualified Data.Ratio
@@ -77,40 +77,42 @@ instance Multiplicative Property where
 nameLaw :: Testable prop => Prelude.String -> prop -> Property
 nameLaw x p = label x (counterexample x p)
 
-law_zero_plus :: forall a. (Additive a, TestEqual a) => a -> Property
-law_zero_plus n = nameLaw "zero/plus" (zero + n =.= n)
+law_assoc :: forall a. (TestEqual a) => String -> (a -> a -> a) -> a -> a -> a -> Property
+law_assoc opName (⊕) m n o = nameLaw (opName <> "-assoc") (n ⊕ (m ⊕ o) =.= (n ⊕ m) ⊕ o)
 
-law_plus_zero :: (Additive a, TestEqual a) => a -> Property
-law_plus_zero n = nameLaw "plus/zero" (n + zero =.= n)
+law_left_id :: forall a. (TestEqual a) => String -> (a -> a -> a) -> a -> a ->  Property
+law_left_id opName (⊕) z n = nameLaw (opName <> "-leftId") (z ⊕ n =.= n)
 
-law_plus_assoc :: (Additive a, TestEqual a) => a -> a -> a -> Property
-law_plus_assoc m n o = nameLaw "plus/assoc" (n + (m + o) =.= (n + m) + o)
+law_right_id :: forall a. (TestEqual a) => String -> (a -> a -> a) -> a -> a ->  Property
+law_right_id opName (⊕) z n = nameLaw (opName <> "-rightId") (n ⊕ z =.= n)
+
+laws_monoid :: forall a. (Arbitrary a, TestEqual a) => String -> (a -> a -> a) -> a -> Property
+laws_monoid opName (⊕) z = product
+   [property (law_left_id @a opName (⊕) z)
+   ,property (law_right_id @a opName (⊕) z)
+   ,property (law_assoc @a opName (⊕))]
+
+law_commutative :: (TestEqual a) => String -> (a -> a -> a) -> a -> a -> Property
+law_commutative opName (⊕) m n = nameLaw (opName <> "-comm") (m ⊕ n =.= n ⊕ m)
+
+laws_comm_monoid :: forall a. (Arbitrary a, TestEqual a) => String -> (a -> a -> a) -> a -> Property
+laws_comm_monoid opName (⊕) z = laws_monoid opName (⊕) z * property (law_commutative opName (⊕)) 
+                                          
 
 law_times :: (TestEqual a, Additive a) => Positive Integer -> a -> Property
 law_times (Positive m) n = nameLaw "times" (times m n =.= timesDefault m n)
 
 laws_additive :: forall a. Arbitrary a => (Additive a, TestEqual a) => Property
-laws_additive = product [property (law_zero_plus @a)
-                        ,property (law_plus_zero @a)
-                        ,property (law_plus_assoc @a)
+laws_additive = product [property (laws_monoid @a "plus" (+) zero)
                         ,property (law_times @a)]
 
-
-law_one_mul :: forall a. (Multiplicative a, TestEqual a) => a -> Property
-law_one_mul n = nameLaw "one/mul" (one * n =.= n)
-law_mul_one :: (Multiplicative a, TestEqual a) => a -> Property
-law_mul_one n = nameLaw "mul/one" (n * one =.= n)
-law_mul_assoc :: (Multiplicative a, TestEqual a) => a -> a -> a -> Property
-law_mul_assoc m n o = nameLaw "mul/assoc" (n * (m * o) =.= (n * m) * o)
 law_exp_pos :: (TestEqual a, Multiplicative a) => a -> Property
 law_exp_pos n = nameLaw "positive exponent" $ do
   m <- choose (0,5) -- for dense polynomials, elevating to a large power can be very expensive.
   pure (n ^+ m =.= positiveExponentDefault n m)
 
 laws_multiplicative :: forall a. Arbitrary a => (Multiplicative a, TestEqual a) => Property
-laws_multiplicative = product [property (law_one_mul @a)
-                              ,property (law_mul_one @a)
-                              ,property (law_mul_assoc @a)
+laws_multiplicative = product [property (laws_monoid @a "mul" (*) one)
                               ,property (law_exp_pos @a)]
 
 law_fromInteger :: forall a. (TestEqual a, Ring a) => Integer -> Property
@@ -220,11 +222,8 @@ instance DecidableZero x => DecidableZero (Complex x) where
 class Additive a => AbelianAdditive a
   -- just a law.
 
-law_plus_comm :: (TestEqual a, Additive a) => a -> a -> Property
-law_plus_comm m n = nameLaw "plus/comm" (m + n =.= n + m)
-
-laws_abelian_additive :: forall a. Arbitrary a => (Group a, TestEqual a) => Property
-laws_abelian_additive = laws_additive @a .&&. product [property (law_plus_comm @a)]
+laws_abelian_additive :: forall a. (Arbitrary a, AbelianAdditive a, TestEqual a) => Property
+laws_abelian_additive = laws_comm_monoid @a "plus" (+) zero
 
 instance AbelianAdditive Integer
 instance AbelianAdditive CInt
@@ -261,7 +260,7 @@ laws_group = laws_additive @a .&&. product [property (law_negate_minus @a)
                                            ,property (law_mult @a)]
 
 laws_abelian_group :: forall a. Arbitrary a => (Group a, TestEqual a) => Property
-laws_abelian_group = laws_group @a * product [property (law_plus_comm @a)]
+laws_abelian_group = laws_group @a * product [property (law_commutative @a "plus" (+))]
 
 instance Group Integer where
   (-) = (Prelude.-)
@@ -328,8 +327,8 @@ instance {-# Overlappable #-} Scalable s a => Scalable s (k -> a) where
 
   
 -- | A prefix variant of (*^), useful when using type applications.
-scale :: forall s a. Scalable s a => s -> a -> a
-scale = (*^)
+-- scale :: forall s a. Scalable s a => s -> a -> a
+-- scale = (*^)
 
 type SemiModule s a = (AbelianAdditive a, SemiRing s, Scalable s a)
 
