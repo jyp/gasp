@@ -14,6 +14,8 @@ import Test.QuickCheck
 
 newtype Op k a b = Op {fromOp :: k b a}
 
+deriving instance Additive (f b a) => Additive (Op f a b)
+deriving instance Group (f b a) => Group (Op f a b)
 deriving instance Arbitrary (f b a) => Arbitrary (Op f a b)
 deriving instance Show (f b a) => Show (Op f a b)
 deriving instance TestEqual (f b a) => TestEqual (Op f a b)
