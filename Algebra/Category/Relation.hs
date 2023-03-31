@@ -12,6 +12,10 @@ import Prelude (Bool(..), Eq(..),(&&),flip, ($),(||))
 
 newtype Rel s a b = Rel (a -> b -> s)
 
+instance Additive s => Additive (Rel s a b) where
+  Rel f + Rel g = Rel (f + g)
+  zero = Rel zero
+
 indicate :: Ring s => Bool -> s
 indicate = \case
   True -> one
