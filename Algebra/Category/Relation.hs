@@ -41,8 +41,8 @@ instance Ring s => Monoidal (⊗) One (Rel s) where
   assoc_ = dagger assoc
 
 instance Ring s => Cartesian (⊗) One (Rel s) where
-  dis = Rel (\_ _ -> zero)
-  dup = Rel (\i (j `Pair` k) -> indicate (i == j || i == k))
+  dis = Rel (\_ _ -> one)
+  dup = Rel (\i (j `Pair` k) -> indicate (i == j && i == k))
 
 instance Ring s => CoCartesian (⊗) One (Rel s) where
   new = dagger dis
