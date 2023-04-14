@@ -21,13 +21,11 @@
 {-# LANGUAGE PolyKinds #-}
 module Algebra.Category where
 
-import Algebra.Classes (nameLaw, TestEqual(..), product)
+import Algebra.Classes (Additive(..))
 import Algebra.Types
 import Algebra.Category.Objects
 import qualified Prelude
 import Data.Kind
-import Data.Constraint
-import Test.QuickCheck
 import Prelude (Show(..))
 import qualified Algebra.CategoryRecords as R
 
@@ -134,6 +132,10 @@ cartesianAssoc_ :: forall a b x i c k con. (Obj k a, Obj k b, Obj k c, Cartesian
 cartesianAssoc_ = (exl ▵ (exl . exr)) ▵ (exr . exr)
 
 
+coCartesianExl ::  (O2 cat a b, CoCartesian x i cat, Additive (cat b a)) => (a `x` b) `cat` a
+coCartesianExl = id ▿ zero
+coCartesianExr ::  (O2 cat a b, CoCartesian x i cat, Additive (cat a b)) => (a `x` b) `cat` b
+coCartesianExr = zero ▿ id
 
 class Symmetric x i cat => CoCartesian x i cat where
   {-# MINIMAL inl,inr,jam | inl,inr,(▿) | new,jam | new,(▿) #-}
