@@ -26,7 +26,6 @@ import Algebra.Types
 import Algebra.Category.Objects
 import qualified Prelude
 import Data.Kind
-import Prelude (Show(..))
 import qualified Algebra.CategoryRecords as R
 
 type O2 k a b = (Obj k a, Obj k b)
@@ -163,7 +162,6 @@ class Monoidal x i cat => Autonomous l r x i cat | x -> l, x -> r where
   
 class (Symmetric x i cat, Autonomous d d x i cat) => Compact x d i cat where
 
-  
 
 ---------------------------
 -- Instances
@@ -180,10 +178,20 @@ instance Monoidal (⊗) One (->) where
   assoc_ (x `Pair` (y `Pair` z)) = ((x `Pair` y) `Pair` z)  
   unitorR x = (x `Pair` Unit)
   unitorR_ (x `Pair` Unit) = x
-
 instance Braided (⊗) One (->) where
   swap (x `Pair` y) = (y `Pair` x)
 instance Symmetric (⊗) One (->)
+
+instance Monoidal (,) () (->) where
+  (f ⊗ g) (x , y) = (f x , g y)
+  assoc ((x , y) , z) = (x , (y , z)) 
+  assoc_ (x , (y , z)) = ((x , y) , z)  
+  unitorR x = (x , ())
+  unitorR_ (x , ()) = x
+instance Braided (,) () (->) where
+  swap (x, y) = (y, x)
+instance Symmetric (,) () (->)
+
 
 instance Monoidal (⊕) Zero (->) where
   f ⊗ g = \case
@@ -215,6 +223,13 @@ instance Cartesian (⊗) One (->) where
   exl (Pair x _) = x
   (f ▵ g) x = f x `Pair` g x
   dis _ = Unit
+
+instance Cartesian (,) () (->) where
+  dup x = (x,x)
+  exr (_,x) = x
+  exl (x,_) = x
+  (f ▵ g) x = (f x, g x)
+  dis _ = ()
 
 instance CoCartesian (⊕) Zero (->) where
   inl = Inj1
