@@ -8,7 +8,7 @@ module Algebra.Classes where
 
 import Prelude (Int,Integer,Float,Double, (==), Monoid(..), Ord(..), Ordering(..), Foldable,
                 foldMap, (||), (&&), ($),
-                 Real(..), Enum(..), snd, Rational, Functor(..), Eq(..), Bool(..), Semigroup(..), Show(..), uncurry, otherwise,String)
+                 Enum(..), snd, Rational, Functor(..), Eq(..), Bool(..), Semigroup(..), Show(..), uncurry, otherwise,String)
 
 import qualified Prelude
 import qualified Data.Ratio
@@ -120,7 +120,7 @@ law_fromInteger m = nameLaw "fromInteger" (fromInteger @a m =.= fromIntegerDefau
 
 laws_ring :: forall a. Arbitrary a => (Ring a, TestEqual a) => Property
 laws_ring = product [property (law_fromInteger @a)
-                    ,laws_additive @a
+                    ,laws_group @a
                     ,laws_module @a @a
                     ,laws_multiplicative @a]
 
@@ -550,14 +550,16 @@ instance  EuclideanDomain Int  where
     stdAssociate x  =  Prelude.abs x
     stdUnit x       =  if x < 0 then -1 else 1
 
-class (Real a, Enum a, EuclideanDomain a) => Integral a  where
+
+-- Note: base.Integral has "Real", superclass, which also defines "toRational"
+class (Ord a, Ring a, Enum a, EuclideanDomain a) => Integral a  where
     div, mod       :: a -> a -> a
     divMod         :: a -> a -> (a,a)
     toInteger       :: a -> Integer
 
     n `div` d      =  q  where (q,_) = divMod n d
     n `mod` d       =  r  where (_,r) = divMod n d
-    divMod n d     =  if Prelude.signum r == - Prelude.signum d then (q+one, r-d) else qr
+    divMod n d     =  if stdUnit r == negate (stdUnit d) then (q+one, r-d) else qr
       where qr@(q,r) = quotRem n d
 
 instance  Integral Integer  where
