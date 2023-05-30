@@ -65,4 +65,6 @@ instance (con ~ Obj k, Con' x con, UnCon r con, UnCon l con, con i, Autonomous r
   turn = swap . Op turn'
   turn' = Op turn . swap
 
+instance (con ~ Obj k, Con' x con, UnCon d con, con i, Compact x d i k, Braided x i k) => Compact x d i (Op k) where
+
 
