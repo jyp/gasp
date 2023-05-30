@@ -62,7 +62,15 @@ instance ProdKind Type where
   data One = Unit deriving (Eq,Ord,Enum,Bounded,Show)
 
 instance DualKind Type where
-  data Dual x = DualType x deriving (Eq,Ord,Show,Generic)
+  data Dual x = DualType {fromDualType :: x} deriving (Eq,Ord,Show,Generic)
+
+instance Finite a => Finite (Dual a) where
+instance Finite a => Bounded (Dual a) where
+  minBound = DualType minBound
+  maxBound = DualType maxBound
+instance Finite a => Enum (Dual a) where
+  toEnum = DualType . toEnum
+  fromEnum = fromEnum . fromDualType
 
 inhabitants :: Finite a => [a]
 inhabitants = [minBound..maxBound]
@@ -103,7 +111,7 @@ instance Finite One
 instance (Bounded x, Bounded y) => Bounded (x⊗y) where
   minBound = minBound `Pair` minBound
   maxBound = maxBound `Pair` maxBound
-
+  
   
 instance Enum Zero where
   toEnum = error "toEnum: Zero"
