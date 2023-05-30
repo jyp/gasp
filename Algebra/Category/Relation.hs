@@ -29,6 +29,7 @@ instance Ring s => Category (Rel s) where
 instance Ring s => Autonomous Dual Dual (⊗) One (Rel s) where
   turn = Rel (\_ (DualType i `Pair` j) -> indicate (i == j)) 
   turn' =  Rel (\(i `Pair` DualType j) _ -> indicate (i == j))
+instance Ring s => Compact (⊗) Dual One (Rel s)
 instance Ring s => Symmetric (⊗) One (Rel s)
 instance Ring s => Braided (⊗) One (Rel s) where
   swap = Rel (\(i `Pair` j) (k `Pair` l) -> indicate (i == l && j == k))
