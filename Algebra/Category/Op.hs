@@ -1,3 +1,8 @@
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -5,10 +10,12 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Algebra.Category.Op where
 
 import Algebra.Category
 import Algebra.Classes
+import Algebra.Category.Objects
 import Prelude (Show)
 import Test.QuickCheck
 
@@ -53,5 +60,9 @@ instance Braided x i k => Braided x i (Op k) where
   swap_ = Op swap_
 
 instance Symmetric x i k => Symmetric x i (Op k) where
+
+instance (con ~ Obj k, Con' x con, UnCon r con, UnCon l con, con i, Autonomous r l x i k, Braided x i k) => Autonomous l r x i (Op k) where
+  turn = swap . Op turn'
+  turn' = Op turn . swap
 
 

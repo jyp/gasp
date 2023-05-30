@@ -157,8 +157,8 @@ class Symmetric x i cat => CoCartesian x i cat where
 type BiCartesian x i cat = (Cartesian x i cat, CoCartesian x i cat)
 
 class Monoidal x i cat => Autonomous l r x i cat | x -> l, x -> r where
-  turn   :: i `cat` (l a ⊗ a)
-  turn'  :: (a ⊗ r a) `cat` i
+  turn   :: Obj cat a => i `cat` (l a `x` a)
+  turn'  :: Obj cat a => (a `x` r a) `cat` i
   
 class (Symmetric x i cat, Autonomous d d x i cat) => Compact x d i cat where
 
