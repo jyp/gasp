@@ -29,7 +29,7 @@ type Con' x con = forall a b. (con a, con b) => con (a `x` b) :: Constraint
 type UnCon o con = forall a. (con a) => con (o a) :: Constraint
 
 type TimesCon1 con = forall x a b. (con (a (b x))) => con ((a⊗b) x) :: Constraint
-type PlusCon1 con = forall x a b. (con (a x), con (b x)) => con ((a⊕b) x) :: Constraint
+type PlusCon1 con = forall {k} (x :: k) a b. (con (a x), con (b x)) => con ((a⊕b) x) :: Constraint
 type OneCon1 (con :: Type -> Constraint) = forall x. con x => con (One x) :: Constraint
 type ZeroCon1 con = forall x. con x => con (Zero x) :: Constraint
 -- type LConTensor con = forall a b. con (a⊗b) => con a :: Constraint
@@ -43,7 +43,7 @@ reprCon = \case
   ROne -> Dict
 
 reprCon1Comp :: forall (z :: Type) con (a :: Type -> Type) b. CompClosed con -> con z => CRepr a -> CRepr b -> Dict (con (a (b z)))
-reprCon1Comp c@CompClosed{..} a b = Dict \\ reprCon1 @(b z) c a \\ reprCon1 @z c b
+reprCon1Comp c@CompClosed{} a b = Dict \\ reprCon1 @(b z) c a \\ reprCon1 @z c b
 
 reprCon1 :: forall (z :: Type) (con :: Type -> Constraint) a. con z => CompClosed con -> CRepr a -> Dict (con (a z))
 reprCon1 c@CompClosed{..} = \case
