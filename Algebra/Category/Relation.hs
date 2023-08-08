@@ -8,7 +8,7 @@ module Algebra.Category.Relation where
 import Algebra.Classes
 import Algebra.Types
 import Algebra.Category
-import Prelude (Bool(..), Eq(..),(&&),flip, ($),(||))
+import Prelude (Bool(..), Eq(..),(&&),flip, ($))
 
 newtype Rel s a b = Rel (a -> b -> s)
 
@@ -60,7 +60,9 @@ instance Ring s => Monoidal (⊕) Zero (Rel s) where
     (Inj2 i) -> \case
       (Inj1 _) -> zero
       (Inj2 j) -> q i j
-  unitorR = Rel (\i (Inj1 j) -> indicate (i == j))
+  unitorR = Rel $ \i -> \case
+    Inj1 j -> indicate (i == j)
+    Inj2 j -> case j of
   assoc = Rel $ \case
     (Inj1 (Inj1 i)) -> \case
       Inj1 j -> indicate (i == j)
