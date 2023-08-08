@@ -78,9 +78,9 @@ inhabitants = [minBound..maxBound]
 class (Enum a, Bounded a, Eq a, Ord a) => Finite a where
   typeSize :: Int
   typeSize = fromEnum (maxBound @a) - fromEnum (minBound @a) + 1
-  finiteFstsnd :: forall α b. (a ~ (α⊗b)) => Dict (Finite α, Finite b)
+  finiteFstsnd :: forall α β. (a ~ (α⊗β)) => Dict (Finite α, Finite β)
   finiteFstsnd = error "finiteFstsnd: not a product type"
-  finiteLeftRight :: forall α b. (a ~ (α⊕b)) => Dict (Finite α, Finite b)
+  finiteLeftRight :: forall α β. (a ~ (α⊕β)) => Dict (Finite α, Finite β)
   finiteLeftRight = error "finiteFstsnd: not a sum type"
 
 
