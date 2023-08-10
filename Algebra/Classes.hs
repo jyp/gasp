@@ -1,3 +1,5 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -630,28 +632,6 @@ instance  Field a => Division (Complex a)  where
 instance Field a => Field (Complex a) where
     fromRational a =  fromRational a :+ zero
 
-{-data Expr a where
-  Embed :: a -> Expr a
-  Add :: Expr a -> Expr a -> Expr a
-  Mul :: Expr a -> Expr a -> Expr a
-  Zero :: Expr a
-  One :: Expr a
-  deriving (Prelude.Show)
-
-
-instance Additive (Expr a) where
-  zero = Zero
-  Zero + x = x
-  x + Zero = x
-  x + y = Add x y
-
-instance Multiplicative (Expr a) where
-  one = One
-  One * x = x
-  x * One = x
-  x * y = Mul x y
--}
-
 -- Syntax
 
 ifThenElse :: Bool -> t -> t -> t
@@ -889,3 +869,49 @@ instance Multiplicative a => Monoid (Product a) where
   mempty = Product one
   mappend = (<>)
 
+---------------------
+-- Functor application, useful for "deriving via".
+
+newtype App f x = App (f x) deriving (Functor, Applicative) -- should be somewhere in base but can't find it.
+
+instance (Applicative f, AbelianAdditive a) => AbelianAdditive (App f a) where
+instance (Applicative f, Additive a) => Additive (App f a) where
+  (+) = liftA2 (+)
+  zero = pure zero
+instance (Applicative f, Group a) => Group (App f a) where
+  (-) = liftA2 (-)
+  negate = fmap negate
+
+instance (Applicative f, Multiplicative a) => Multiplicative (App f a) where
+  (*) = liftA2 (*)
+  one = pure one
+
+instance (Applicative f, Scalable s a) =>  Scalable (App f s) (App f a) where
+  (*^) = liftA2 (*^)
+
+instance (Applicative f, Division s) => Division (App f s) where
+  recip = fmap recip
+  (/) = liftA2 (/)
+
+instance (Applicative f, Roots s) => Roots (App f s) where
+  x ^/ r = (^/ r) <$> x
+  root i = fmap (root i)
+
+instance (Applicative f, Field s) => Field (App f s) where
+  
+instance (Applicative f, Transcendental s) => Transcendental (App f s) where
+  pi = pure pi
+  exp = fmap exp
+  log = fmap log 
+  sin = fmap sin 
+  cos = fmap cos 
+  asin = fmap asin 
+  acos = fmap acos 
+  atan = fmap atan 
+  sinh = fmap sinh 
+  cosh = fmap cosh 
+  asinh = fmap asinh 
+  acosh = fmap acosh 
+  atanh = fmap atanh 
+  
+instance (Applicative f, Ring a) => Ring (App f a)
