@@ -1,3 +1,5 @@
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PolyKinds #-}
@@ -145,7 +147,11 @@ pattern V3' x y z = VNext (V2' x y) z
 -- Euclidean spaces with a (inner product)
 
 -- | Make a Euclidean vector out of a traversable functor. (The p)
-newtype Euclid f a = Euclid {fromEuclid :: f a} deriving (Functor,Foldable,Traversable,Show,Eq,Ord,Applicative)
+newtype Euclid f a = Euclid {fromEuclid :: f a}
+  deriving (Functor,Foldable,Traversable,Show,Eq,Ord,Applicative)
+
+deriving via App f a instance (Applicative f, Additive a) => Additive (Euclid f a)
+deriving via App f a instance (Applicative f, Group a) => Group (Euclid f a)
 
 type V3 = Euclid V3'
 type V2 = Euclid V2'
@@ -155,13 +161,6 @@ pattern V2 x y = Euclid (V2' x y)
 pattern V3 :: forall a. a -> a -> a -> Euclid V3' a
 pattern V3 x y z = Euclid (V3' x y z)
 
-instance (Applicative f,Additive a) => Additive (Euclid f a) where
-  zero = pure zero
-  x + y =  (+) <$> x <*> y
-instance (Applicative f,AbelianAdditive a) => AbelianAdditive (Euclid f a) where
-instance (Applicative f,Group a) => Group (Euclid f a) where
-  negate x = negate <$> x
-  x - y = (-) <$> x <*> y
 instance (Functor f, Scalable s a) => Scalable s (Euclid f a) where
   s *^ Euclid t = Euclid (((s*^) <$>) t)
 
