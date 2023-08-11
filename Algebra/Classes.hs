@@ -898,6 +898,7 @@ instance (Applicative f, Roots s) => Roots (App f s) where
   root i = fmap (root i)
 
 instance (Applicative f, Field s) => Field (App f s) where
+  fromRational x = pure (fromRational x)
   
 instance (Applicative f, Transcendental s) => Transcendental (App f s) where
   pi = pure pi
@@ -914,4 +915,5 @@ instance (Applicative f, Transcendental s) => Transcendental (App f s) where
   acosh = fmap acosh 
   atanh = fmap atanh 
   
-instance (Applicative f, Ring a) => Ring (App f a)
+instance (Applicative f, Ring a) => Ring (App f a) where
+  fromInteger x = pure (fromInteger x)
