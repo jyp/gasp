@@ -8,7 +8,7 @@
 {-# LANGUAGE MultiParamTypeClasses, ConstraintKinds, FlexibleContexts, FlexibleInstances, DeriveGeneric #-}
 module Algebra.Classes where
 
-import Prelude (Int,Integer,Float,Double, (==), Monoid(..), Ord(..), Ordering(..), Foldable,
+import Prelude (Integer,Float,Double, (==), Monoid(..), Ord(..), Ordering(..), Foldable,
                 foldMap, (||), (&&), ($),
                  Enum(..), snd, Rational, Functor(..), Eq(..), Bool(..), Semigroup(..), Show(..), uncurry, otherwise,String)
 
@@ -21,6 +21,7 @@ import Data.Word
 import Data.Binary
 import Data.Complex
 import GHC.Generics
+import GHC.Int
 import Test.QuickCheck
 import Control.Applicative
 
@@ -157,6 +158,19 @@ instance Additive Word8 where
   zero = 0
   times n x = Prelude.fromIntegral n * x
 
+instance Additive Int32 where
+  (+) = (Prelude.+)
+  zero = 0
+  times n x = Prelude.fromIntegral n * x
+instance Additive Int16 where
+  (+) = (Prelude.+)
+  zero = 0
+  times n x = Prelude.fromIntegral n * x
+instance Additive Int8 where
+  (+) = (Prelude.+)
+  zero = 0
+  times n x = Prelude.fromIntegral n * x
+
 instance Additive CInt where
   (+) = (Prelude.+)
   zero = 0
@@ -230,6 +244,12 @@ laws_abelian_additive = laws_comm_monoid @a "plus" (+) zero
 instance AbelianAdditive Integer
 instance AbelianAdditive CInt
 instance AbelianAdditive Int
+instance AbelianAdditive Int8
+instance AbelianAdditive Int16
+instance AbelianAdditive Int32
+instance AbelianAdditive Word8
+instance AbelianAdditive Word16
+instance AbelianAdditive Word32
 instance AbelianAdditive Bool
 instance AbelianAdditive Double
 instance AbelianAdditive Float
@@ -276,15 +296,13 @@ instance Group CInt where
   (-) = (Prelude.-)
   negate = Prelude.negate
 
-instance Group Word32 where
+instance Group Int32 where
   (-) = (Prelude.-)
   negate = Prelude.negate
-
-instance Group Word16 where
+instance Group Int16 where
   (-) = (Prelude.-)
   negate = Prelude.negate
-
-instance Group Word8 where
+instance Group Int8 where
   (-) = (Prelude.-)
   negate = Prelude.negate
 
@@ -369,8 +387,10 @@ instance (Ord x, Show x, Arbitrary x,TestEqual a,Additive a) => TestEqual (Map x
 instance Scalable Integer Integer where
   (*^) = (*)
 
-instance Scalable Int Int where
-  (*^) = (*)
+instance Scalable Int Int where (*^) = (*)
+instance Scalable Int8 Int8 where (*^) = (*)
+instance Scalable Int16 Int16 where (*^) = (*)
+instance Scalable Int32 Int32 where (*^) = (*)
 
 instance Scalable CInt CInt where
   (*^) = (*)
@@ -423,6 +443,21 @@ instance Multiplicative Word8 where
   one = 1
   (^+) = (Prelude.^)
 
+instance Multiplicative Int32 where
+  (*) = (Prelude.*)
+  one = 1
+  (^+) = (Prelude.^)
+
+instance Multiplicative Int16 where
+  (*) = (Prelude.*)
+  one = 1
+  (^+) = (Prelude.^)
+
+instance Multiplicative Int8 where
+  (*) = (Prelude.*)
+  one = 1
+  (^+) = (Prelude.^)
+
 instance Multiplicative Int where
   (*) = (Prelude.*)
   one = 1
@@ -455,6 +490,10 @@ class (Module a a, PreRing a) => Ring a where
 
 instance Ring Integer where
   fromInteger = Prelude.fromInteger
+
+instance Ring Int8 where fromInteger = Prelude.fromInteger
+instance Ring Int16 where fromInteger = Prelude.fromInteger
+instance Ring Int32 where fromInteger = Prelude.fromInteger
 
 instance Ring CInt where
   fromInteger = Prelude.fromInteger
