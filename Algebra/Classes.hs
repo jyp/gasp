@@ -784,6 +784,10 @@ instance (Prelude.RealFloat a, Ord a, Algebraic a) => Roots (Complex a) where
                             u'    = sqrt ((magnitude z + Prelude.abs x) / 2)
 
 
+instance  (Prelude.RealFloat a, Transcendental a) => AlgebraicallyClosed (Complex a) where
+  imaginaryUnit = 0 :+ 1
+  rootOfUnity n i = exp (0 :+ 2*pi*fromInteger i/fromInteger n)
+  
 
 instance  (Prelude.RealFloat a, Transcendental a) => Transcendental (Complex a) where
     {-# SPECIALISE instance Transcendental (Complex Float) #-}
