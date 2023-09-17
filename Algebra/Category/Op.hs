@@ -61,10 +61,10 @@ instance Braided x i k => Braided x i (Op k) where
 
 instance Symmetric x i k => Symmetric x i (Op k) where
 
-instance (con ~ Obj k, Con' x con, UnCon r con, UnCon l con, con i, Autonomous r l x i k, Braided x i k) => Autonomous l r x i (Op k) where
+instance (con ~ Obj k, Con' x con, UnCon r con, UnCon l con, con i, Autonomous x i r l k, Braided x i k) => Autonomous x i l r (Op k) where
   turn = swap . Op turn'
   turn' = Op turn . swap
 
-instance (con ~ Obj k, Con' x con, UnCon d con, con i, Compact x d i k, Braided x i k) => Compact x d i (Op k) where
+instance (con ~ Obj k, Con' x con, UnCon d con, con i, Compact x i d k, Braided x i k) => Compact x i d (Op k) where
 
 
