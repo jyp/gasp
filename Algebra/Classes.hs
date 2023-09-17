@@ -306,6 +306,16 @@ instance Group Int8 where
   (-) = (Prelude.-)
   negate = Prelude.negate
 
+instance Group Word32 where
+  (-) = (Prelude.-)
+  negate = Prelude.negate
+instance Group Word16 where
+  (-) = (Prelude.-)
+  negate = Prelude.negate
+instance Group Word8 where
+  (-) = (Prelude.-)
+  negate = Prelude.negate
+
 instance Group Double where
   (-) = (Prelude.-)
   negate = Prelude.negate
