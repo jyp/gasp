@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE TupleSections #-}
@@ -354,6 +355,11 @@ instance {-# Overlappable #-} Scalable s a => Scalable s (Map k a) where
 
 instance {-# Overlappable #-} Scalable s a => Scalable s (k -> a) where
   s *^ x = fmap (s *^) x
+
+-- | "Most natural" scaling. Also disambiguates the scalar type, but using a fundep.
+class Scalable' a where
+  type Scalar a
+  (!*^) :: Scalar a -> a -> a
 
   
 -- | A prefix variant of (*^), useful when using type applications.
