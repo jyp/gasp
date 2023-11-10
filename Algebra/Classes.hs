@@ -398,9 +398,14 @@ instance Scalable Integer Integer where
   (*^) = (*)
 
 instance Scalable Int Int where (*^) = (*)
+
 instance Scalable Int8 Int8 where (*^) = (*)
 instance Scalable Int16 Int16 where (*^) = (*)
 instance Scalable Int32 Int32 where (*^) = (*)
+
+instance Scalable Word8 Word8 where (*^) = (*)
+instance Scalable Word16 Word16 where (*^) = (*)
+instance Scalable Word32 Word32 where (*^) = (*)
 
 instance Scalable CInt CInt where
   (*^) = (*)
@@ -504,6 +509,10 @@ instance Ring Integer where
 instance Ring Int8 where fromInteger = Prelude.fromInteger
 instance Ring Int16 where fromInteger = Prelude.fromInteger
 instance Ring Int32 where fromInteger = Prelude.fromInteger
+
+instance Ring Word8 where fromInteger = Prelude.fromInteger
+instance Ring Word16 where fromInteger = Prelude.fromInteger
+instance Ring Word32 where fromInteger = Prelude.fromInteger
 
 instance Ring CInt where
   fromInteger = Prelude.fromInteger
