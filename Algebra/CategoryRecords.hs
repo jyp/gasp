@@ -32,8 +32,8 @@ data MonoidalRec x i con cat = MonoidalRec
   {(⊗) :: forall a b c d. (con a, con b, con c, con d) => (a `cat` b) -> (c `cat` d) -> (a `x` c) `cat` (b `x` d)
   ,assoc     :: forall a b c. (con a, con b, con c) => ((a `x` b) `x` c) `cat` (a `x` (b `x` c))
   ,assoc_    :: forall a b c. (con a, con b, con c) => (a `x` (b `x` c)) `cat` ((a `x` b) `x` c)
-  ,unitorR   :: forall a. (con a) => a `cat` (a `x` i)
-  ,unitorR_  :: forall a. (con a) => (a `x` i) `cat` a
+  ,unitorR   :: forall a. (con a,con i) => a `cat` (a `x` i)
+  ,unitorR_  :: forall a. (con a,con i) => (a `x` i) `cat` a
   ,unitorL   :: forall a. (con a, con i) => a `cat` (i `x` a)
   ,unitorL_  :: forall a. (con a, con i) => (i `x` a) `cat` a
   }

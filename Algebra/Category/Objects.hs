@@ -24,6 +24,7 @@ import Test.QuickCheck.Property
 import Control.Applicative
 
 type TimesCon con = forall a b. (con a, con b) => con (a⊗b) :: Constraint
+type DualCon con = forall a. (con a) => con (Dual a) :: Constraint
 type PlusCon con = forall a b. (con a, con b) => con (a⊕b) :: Constraint
 type Con' x con = forall a b. (con a, con b) => con (a `x` b) :: Constraint
 type UnCon o con = forall a. (con a) => con (o a) :: Constraint
