@@ -30,7 +30,7 @@ module Algebra.Linear where
 
 import Algebra.Classes
 import Algebra.Category.Laws (laws_bicartesian,testableCat)
-import Prelude (Show(..),Eq(..),($),Ord,error,flip,IO,Bool,Int)
+import Prelude (Show(..),Eq(..),($),Ord,Functor(..),Monad(..),error,flip,IO,Bool,Int)
 import Control.Applicative
 import Data.Foldable hiding (sum,product)
 import Data.Traversable
