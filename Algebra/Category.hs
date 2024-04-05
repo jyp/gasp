@@ -62,18 +62,18 @@ class Category cat => Dagger cat where
 
 type Monoidal :: forall {k}. (k -> k -> k) -> k -> (k -> k -> Type) -> Constraint
 
-class ({-ProdObj (Obj cat), -}Category cat) => Monoidal x i (cat :: k -> k -> Type) | x -> i, i -> x where
+class Category cat => Monoidal x i (cat :: k -> k -> Type) | x -> i, i -> x where
   (⊗)      :: (Obj cat a, Obj cat b, Obj cat c, Obj cat d) => (a `cat` b) -> (c `cat` d) -> (a `x` c) `cat` (b `x` d)
   assoc    :: (Obj cat a, Obj cat b, Obj cat c) => ((a `x` b) `x` c) `cat` (a `x` (b `x` c))
   assoc_   :: (Obj cat a, Obj cat b, Obj cat c) => (a `x` (b `x` c)) `cat` ((a `x` b) `x` c)
-  unitorR   :: (Obj cat a) => a `cat` (a `x` i)
-  unitorR_  :: (Obj cat a) => (a `x` i) `cat` a
-  unitorL   :: forall a. (Obj cat a, Obj cat i) => a `cat` (i `x` a)
+  unitorR   :: (Obj cat a, Obj cat i) => a `cat` (a `x` i)
+  unitorR_  :: (Obj cat a, Obj cat i) => (a `x` i) `cat` a
+  unitorL   :: (Obj cat a, Obj cat i) => a `cat` (i `x` a)
   unitorL_  :: (Obj cat a, Obj cat i) => (i `x` a) `cat` a
 
-  default unitorL :: forall a con. (con ~ Obj cat, con i, Con' x con, Symmetric x i cat, Obj cat a) => a `cat` (i `x` a)
+  default unitorL :: forall a con. (con ~ Obj cat, con i, con (x a i), con (x i a), Symmetric x i cat, Obj cat a) => a `cat` (i `x` a)
   unitorL = swap ∘ unitorR
-  default unitorL_ :: forall a con. (con ~ Obj cat, Symmetric x i cat, con i, Con' x con, Obj cat a) => (i `x` a) `cat` a 
+  default unitorL_ :: forall a con. (con ~ Obj cat, Symmetric x i cat, con i, con (x a i), con (x i a), Obj cat a) => (i `x` a) `cat` a 
   unitorL_ = unitorR_ ∘ swap
 
 monoidalRec :: forall x cat i. Monoidal x i cat => R.MonoidalRec x i (Obj cat) cat
@@ -156,11 +156,11 @@ class Symmetric x i cat => CoCartesian x i cat where
 
 type BiCartesian x i cat = (Cartesian x i cat, CoCartesian x i cat)
 
-class Monoidal x i cat => Autonomous l r x i cat | x -> l, x -> r where
+class Monoidal x i cat => Autonomous x i l r cat | x -> l, x -> r where
   turn   :: Obj cat a => i `cat` (l a `x` a)
   turn'  :: Obj cat a => (a `x` r a) `cat` i
   
-class (Symmetric x i cat, Autonomous d d x i cat) => Compact x d i cat where
+class (Symmetric x i cat, Autonomous x i d d cat) => Compact x i d cat where
 
 
 ---------------------------

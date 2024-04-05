@@ -24,6 +24,7 @@ import Test.QuickCheck.Property
 import Control.Applicative
 
 type TimesCon con = forall a b. (con a, con b) => con (a⊗b) :: Constraint
+type DualCon con = forall a. (con a) => con (Dual a) :: Constraint
 type PlusCon con = forall a b. (con a, con b) => con (a⊕b) :: Constraint
 type Con' x con = forall a b. (con a, con b) => con (a `x` b) :: Constraint
 type UnCon o con = forall a. (con a) => con (o a) :: Constraint
@@ -51,18 +52,27 @@ reprCon1 c@CompClosed{..} = \case
   RTimes a b -> times1Closed \\ reprCon1Comp @z c a b
   RZero -> zero1Closed
   ROne -> one1Closed
-{-
 
 
 type ProdObj :: forall {k}. (k -> Constraint) -> Constraint
-class ProdObj (con :: k -> Constraint) where -- TensorClosed constraint causes problems in the Free module. (probabjy GHC bug)
+class ProdObj (con :: k -> Constraint) where
   objprod :: (con a, con b) => Dict (con (a⊗b))
   objfstsnd :: forall z a b. (z ~ (a⊗b), con z) => Dict (con a, con b)
   objone :: Dict (con One)
 
+type DualObj :: forall {k}. (k -> Constraint) -> Constraint
+class ProdObj con => DualObj (con :: k -> Constraint) where
+  objdual :: con a => Dict (con (Dual a))
+  objdual' :: forall z a. (z ~ Dual a, con z) => Dict (con a)
+
+
+objFstSnd :: forall con a b. ProdObj con => Dict (con (a ⊗ b)) -> Dict (con a, con b)
+objFstSnd Dict = objfstsnd @con @(a ⊗ b)
+
+{-
 
 type SumObj :: forall {k}. (k -> Constraint) -> Constraint
-class SumObj (con :: k -> Constraint) where -- TensorClosed constraint causes problems in the Free module. (probabjy GHC bug)
+class SumObj (con :: k -> Constraint) where -- TensorClosed constraint causes problems in the Free module. (probably GHC bug)
   objsum :: (con a, con b) => Dict (con (a⊕b))
   objleftright :: forall z a b. (z ~ (a⊕b), con z) => Dict (con a, con b)
   objzero :: Dict (con Zero)
