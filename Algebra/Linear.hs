@@ -42,7 +42,7 @@ import Data.Constraint
 import Algebra.Category.Relation
 import Algebra.Category.Objects
 import Data.Functor.Rep
-import Data.Distributive
+import Data.Distributive -- distributive functors
 import Test.QuickCheck hiding (collect, tabulate)
 
 type VectorSpace scalar a = (Field scalar, Module scalar a, Group a)

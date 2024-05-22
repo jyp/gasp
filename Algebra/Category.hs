@@ -162,6 +162,12 @@ class Monoidal x i cat => Autonomous x i l r cat | x -> l, x -> r where
   
 class (Symmetric x i cat, Autonomous x i d d cat) => Compact x i d cat where
 
+class DistributiveCat x s k  where
+  distrL :: O3 k f g h => (f `x` (g `s` h))  `k` ((f `x` g) `s` (f `x` h))
+  distrL' :: O3 k f g h => ((f `x` g) `s` (f `x` h))  `k` (f `x` (g `s` h))
+  distrR :: O3 k f g h => ((g `s` h) `x` f)  `k` ((g `x` f) `s` (h `x` f))
+  distrR' :: O3 k f g h => ((g `x` f) `s` (h `x` f))  `k` ((g `s` h) `x` f)
+
 
 ---------------------------
 -- Instances

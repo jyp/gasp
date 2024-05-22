@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -37,4 +38,20 @@ instance Monoidal (⊗) One NatTrans where
   unitorL = NatTrans (FunctorProd FunctorOne)
   unitorL_ = NatTrans (\(FunctorProd _ x) -> x)
   NatTrans f ⊗ NatTrans g = NatTrans (\(FunctorProd x y) ->  FunctorProd (f x) (g y))
-  
+
+instance DistributiveCat (⊗) (⊕) NatTrans where
+  distrL = NatTrans  (\case
+     (FunctorProd f (FunctorInj1 g)) -> FunctorInj1 (FunctorProd f g)
+     (FunctorProd f (FunctorInj2 h)) -> FunctorInj2 (FunctorProd f h))
+  distrL' = NatTrans (\case
+     (FunctorInj1 (FunctorProd f g)) -> (FunctorProd f (FunctorInj1 g))
+     (FunctorInj2 (FunctorProd f h)) -> (FunctorProd f (FunctorInj2 h)))
+
+
+{-
+instance DistributiveCat (∘) (⊗) NatTrans where
+  distrL = NatTrans (\(Comp x) -> FunctorProd (Comp (fmap prodFst x)) (Comp (fmap prodSnd x)))
+  -- distrL' = NatTrans (\(FunctorProd (Comp g) (Comp h)) -> Comp (FunctorProd <$> g <*> h)) -- needs Obj k = Applicative
+  distrR = NatTrans (\(Comp (FunctorProd x y)) -> FunctorProd (Comp x) (Comp y))
+  distrR' = NatTrans (\(FunctorProd (Comp x) (Comp y)) -> Comp (FunctorProd x y))
+-}
