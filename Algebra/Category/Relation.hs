@@ -24,7 +24,7 @@ indicate = \case
 instance Ring s => Category (Rel s) where
   type Obj (Rel s) = Finite
   Rel p . Rel q = Rel (\i j -> sum [p k j * q i k | k <- inhabitants])
-  id = Rel (\_ _ -> one)
+  id = Rel (\i j -> if i == j then one else zero)
 
 instance Ring s => Autonomous (⊗) One Dual Dual (Rel s) where
   turn = Rel (\_ (DualType i `Pair` j) -> indicate (i == j)) 
