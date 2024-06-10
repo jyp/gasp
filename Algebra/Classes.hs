@@ -363,8 +363,8 @@ class Scalable' a where
 
   
 -- | A prefix variant of (*^), useful when using type applications.
--- scale :: forall s a. Scalable s a => s -> a -> a
--- scale = (*^)
+scale :: forall s a. Scalable s a => s -> a -> a
+scale = (*^)
 
 type SemiModule s a = (AbelianAdditive a, SemiRing s, Scalable s a)
 

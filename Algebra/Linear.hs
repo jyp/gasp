@@ -152,6 +152,7 @@ newtype Euclid f a = Euclid {fromEuclid :: f a}
   deriving (Functor,Foldable,Traversable,Show,Eq,Ord,Applicative)
 
 deriving via App f a instance (Applicative f, Additive a) => Additive (Euclid f a)
+deriving via App f a instance (Applicative f, AbelianAdditive a) => AbelianAdditive (Euclid f a)
 deriving via App f a instance (Applicative f, Group a) => Group (Euclid f a)
 
 type V3 = Euclid V3'

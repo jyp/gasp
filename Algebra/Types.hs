@@ -140,7 +140,7 @@ instance SumKind (Type -> Type) where
 
 instance ProdKind (Type -> Type) where
   data (f ⊗ g) x = FunctorProd {prodFst :: f x, prodSnd :: g x} deriving (Foldable, Traversable, Functor,Generic1,Eq)
-  data One x = FunctorOne deriving (Foldable, Traversable, Functor, Generic1, Eq)
+  data One x = FunctorOne deriving (Foldable, Traversable, Functor, Generic1, Eq, Ord)
 
 instance DualKind (Type -> Type) where
   data Dual f x = FunctorDual {fromFunctorDual :: f x} deriving (Foldable, Traversable, Functor, Generic1, Show, Eq)
