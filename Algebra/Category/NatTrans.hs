@@ -1,3 +1,4 @@
+{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -46,6 +47,12 @@ instance DistributiveCat (⊗) (⊕) NatTrans where
   distrL' = NatTrans (\case
      (FunctorInj1 (FunctorProd f g)) -> (FunctorProd f (FunctorInj1 g))
      (FunctorInj2 (FunctorProd f h)) -> (FunctorProd f (FunctorInj2 h)))
+  distrR = NatTrans (\case
+     FunctorProd (FunctorInj2 g) f -> FunctorInj2 (FunctorProd g f)
+     FunctorProd (FunctorInj1 g) f -> FunctorInj1 (FunctorProd g f))
+  distrR' = NatTrans (\case
+     FunctorInj2 (FunctorProd g f) ->FunctorProd (FunctorInj2 g) f 
+     FunctorInj1 (FunctorProd g f) ->FunctorProd (FunctorInj1 g) f)
 
 
 {-
