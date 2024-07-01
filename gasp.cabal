@@ -49,6 +49,7 @@ library
        Algebra.Category.Op
        Algebra.Category.NatTrans
        Algebra.Category.BlockMatrix
+       Algebra.Category.Equiv
                   
        Algebra.CategoryRecords
     
