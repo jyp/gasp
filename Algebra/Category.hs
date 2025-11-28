@@ -50,9 +50,7 @@ class Category (cat :: k -> k -> Type) where
   (.)      :: (Obj cat a, Obj cat b, Obj cat c) => b `cat` c -> a `cat` b -> a `cat` c
   id :: Obj cat a => a `cat` a
 
-
 -- , (∘) = (∘), id = id
-
 
 class Category cat => Dagger cat where
   dagger :: O2 cat a b => a `cat` b -> b `cat` a
@@ -70,7 +68,7 @@ class Category cat => Monoidal x i (cat :: k -> k -> Type) | x -> i, i -> x wher
   unitorR_  :: (Obj cat a, Obj cat i) => (a `x` i) `cat` a
   unitorL   :: (Obj cat a, Obj cat i) => a `cat` (i `x` a)
   unitorL_  :: (Obj cat a, Obj cat i) => (i `x` a) `cat` a
-
+ 
   default unitorL :: forall a con. (con ~ Obj cat, con i, con (x a i), con (x i a), Symmetric x i cat, Obj cat a) => a `cat` (i `x` a)
   unitorL = swap ∘ unitorR
   default unitorL_ :: forall a con. (con ~ Obj cat, Symmetric x i cat, con i, con (x a i), con (x i a), Obj cat a) => (i `x` a) `cat` a 
